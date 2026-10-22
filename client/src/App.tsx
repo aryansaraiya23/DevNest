@@ -1,109 +1,153 @@
-import React, { useEffect, useState } from 'react';
-import { SUPPORTED_LANGUAGES, SupportedLanguage } from '@devnest/shared';
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginPage } from './components/auth/LoginPage';
+import { SignUpPage } from './components/auth/SignUpPage';
+import { DashboardPage } from './components/dashboard/DashboardPage';
+import { WorkspacePage } from './components/workspace/WorkspacePage';
+import { ToastContainer } from './components/common/Toast';
+import { ToastMessage } from './types/ide';
 
-interface HealthStatus {
-  status: string;
-  service: string;
-  timestamp: string;
-  supportedLanguages: string[];
-}
+type ViewMode = 'login' | 'signup' | 'dashboard' | 'workspace';
 
-export const App: React.FC = () => {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const MainApp: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [currentView, setCurrentView] = useState<ViewMode>('login');
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  const showToast = (
+    title: string,
+    description?: string,
+    type: 'info' | 'success' | 'warning' | 'error' = 'info'
+  ) => {
+    const id = `toast_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const newToast: ToastMessage = { id, title, description, type };
+    setToasts((prev) => [...prev, newToast]);
+
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4500);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Sync hash on load
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+    const parseHash = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/workspace')) {
+        const params = new URLSearchParams(hash.split('?')[1] || '');
+        const pId = params.get('projectId');
+        if (pId) {
+          setActiveProjectId(pId);
+          setCurrentView('workspace');
+          return;
         }
-        return res.json();
-      })
-      .then((data: HealthStatus) => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setError(err.message);
-        setLoading(false);
-      });
+      }
+      if (hash === '#/signup') {
+        setCurrentView('signup');
+        return;
+      }
+      if (hash === '#/login') {
+        setCurrentView('login');
+        return;
+      }
+      if (hash === '#/dashboard') {
+        setCurrentView('dashboard');
+        return;
+      }
+    };
+
+    parseHash();
   }, []);
 
+  // Sync currentView with auth state
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      if (currentView !== 'login' && currentView !== 'signup') {
+        setCurrentView('login');
+        window.location.hash = '#/login';
+      }
+    } else {
+      // Authenticated users shouldn't stay on login or signup
+      if (currentView === 'login' || currentView === 'signup') {
+        setCurrentView('dashboard');
+        window.location.hash = '#/dashboard';
+      }
+    }
+  }, [isAuthenticated, isLoading, currentView]);
+
+  const navigateToDashboard = () => {
+    setActiveProjectId(null);
+    setCurrentView('dashboard');
+    window.location.hash = '#/dashboard';
+  };
+
+  const navigateToWorkspace = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setCurrentView('workspace');
+    window.location.hash = `#/workspace?projectId=${projectId}`;
+  };
+
+  const navigateToLogin = () => {
+    setCurrentView('login');
+    window.location.hash = '#/login';
+  };
+
+  const navigateToSignUp = () => {
+    setCurrentView('signup');
+    window.location.hash = '#/signup';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-3 text-slate-400">
+        <svg className="animate-spin h-8 w-8 text-brand-400" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        <span className="text-xs">Initializing DevNest...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-950 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950">
-            DN
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">DevNest</h1>
-            <p className="text-xs text-slate-400">Cloud IDE Monorepo Baseline</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            Milestone 0: Active
-          </span>
-        </div>
-      </header>
+    <>
+      {/* Route Switcher */}
+      {!isAuthenticated ? (
+        currentView === 'signup' ? (
+          <SignUpPage onNavigateToLogin={navigateToLogin} />
+        ) : (
+          <LoginPage onNavigateToSignUp={navigateToSignUp} />
+        )
+      ) : currentView === 'workspace' && activeProjectId ? (
+        <WorkspacePage
+          projectId={activeProjectId}
+          onBackToDashboard={navigateToDashboard}
+          onShowToast={showToast}
+        />
+      ) : (
+        <DashboardPage
+          onOpenProject={navigateToWorkspace}
+          onShowToast={showToast}
+        />
+      )}
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6 space-y-6">
-        <div className="bg-slate-850 border border-slate-800 rounded-xl p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-white mb-2">System Status</h2>
-          <p className="text-sm text-slate-400 mb-4">
-            Verifying communication between React client, Node/Express server, and shared types package.
-          </p>
+      {/* Global Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </>
+  );
+};
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Server Connection Status */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-              <span className="text-xs uppercase font-medium tracking-wider text-slate-400">Backend API</span>
-              <div className="mt-2 flex items-center space-x-2">
-                {loading && <span className="text-sm text-amber-400 animate-pulse">Checking /api/health...</span>}
-                {error && <span className="text-sm text-rose-400">Connection offline: {error}</span>}
-                {health && (
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-                      <span className="text-sm font-medium text-emerald-300">{health.service} online</span>
-                    </div>
-                    <p className="text-xs text-slate-500">Timestamp: {health.timestamp}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Shared Package Linking */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-              <span className="text-xs uppercase font-medium tracking-wider text-slate-400">@devnest/shared</span>
-              <div className="mt-2">
-                <span className="text-xs text-slate-400 block mb-2">Supported Execution Languages (imported from shared):</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(SUPPORTED_LANGUAGES) as SupportedLanguage[]).map((langKey) => (
-                    <span
-                      key={langKey}
-                      className="px-2 py-0.5 rounded text-xs bg-slate-800 border border-slate-700 text-slate-300"
-                    >
-                      {SUPPORTED_LANGUAGES[langKey].name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-950 px-6 py-3 text-center text-xs text-slate-500">
-        DevNest &bull; Milestone 0 &bull; Monorepo Scaffolding
-      </footer>
-    </div>
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 };
 

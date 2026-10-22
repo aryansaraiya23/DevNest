@@ -1,8 +1,8 @@
 # DevNest — Project Status & Architecture Guide
 
-> **Current Status:** Milestone 0 Complete • Milestone 1 (UI Prototype & Monaco Editor) Not Started  
+> **Current Status:** Milestone 0 & Milestone 1 Complete • Milestone 2 (MongoDB, Auth, Validation) Ready to Start  
 > **Last Verified:** October 22, 2026  
-> **Branch:** `main` (0 commits, working directory uncommitted)
+> **Branch:** `main` (Working directory changes staged/handled by user)
 
 ---
 
@@ -13,11 +13,11 @@ DevNest is a browser-based, Replit-inspired cloud integrated development environ
 ### Core Purpose & Intended Users
 The platform enables developers, students, and interview candidates to write, compile, run, and debug code instantly in their web browser without local toolchain installation.
 
-### Key Planned Features
-- **In-Browser Code Editing:** High-fidelity multi-language code editing powered by Monaco Editor with syntax highlighting and language boilerplate templates.
-- **Isolated Multi-Language Execution:** Remote compilation and sandboxed execution via the Judge0 API supporting JavaScript (Node.js), Python 3, C++ (GCC), and Java (OpenJDK).
-- **Interactive Execution Console & Telemetry:** Output inspection showing `stdout`, `stderr`, compilation warnings, execution time (ms), memory consumption (KB), and exit codes.
-- **Project & File Management:** Cloud persistence of multi-file projects backed by MongoDB Atlas with user authorization and ownership isolation.
+### Key Capabilities
+- **In-Browser Code Editing:** High-fidelity multi-language code editing powered by Monaco Editor with syntax highlighting, multi-tab switching, unsaved indicators, and language boilerplate templates.
+- **Project & File Management:** Hierarchical multi-file and folder tree supporting create, rename, delete, and nested directory organization.
+- **Interactive Execution Console & Telemetry (Planned):** Remote compilation and sandboxed execution via the Judge0 API supporting JavaScript (Node.js), Python 3, C++ (GCC), and Java (OpenJDK) with CPU time and memory consumption metrics.
+- **User Authentication & Dashboard:** Polished authentication UI (Login/Sign Up) with mock session persistence and a responsive dashboard featuring project search and management.
 - **Modern Monorepo Architecture:** Clean modular architecture separating client SPA, backend REST API, and shared TypeScript domain contracts.
 
 ### Overall Target Architecture
@@ -68,18 +68,19 @@ The platform enables developers, students, and interview candidates to write, co
 | **Frontend Framework** | React & React DOM | `^18.3.1` | User interface library |
 | **Frontend Bundler** | Vite | `^5.4.2` (`@vitejs/plugin-react: ^4.3.1`) | Rapid HMR dev server and production bundler |
 | **Frontend Styling** | Tailwind CSS & PostCSS | `tailwindcss: ^3.4.10`, `postcss: ^8.4.41`, `autoprefixer: ^10.4.20` | Utility-first styling with custom dark theme palette |
+| **Code Editor** | Monaco Editor | `@monaco-editor/react: ^4.7.0` | High-fidelity in-browser code editor with multi-tab support and syntax highlighting |
+| **UI Iconography** | Lucide React | `lucide-react: ^1.61.0` | Modern, cohesive SVG developer icons across IDE and dashboard |
 
-### Planned Technologies (Not Yet Installed / Implemented)
+### Planned Technologies (Scheduled for Later Milestones)
 
-| Layer | Planned Technology | Intended Purpose | Current Status |
+| Layer | Planned Technology | Intended Purpose | Target Milestone |
 |---|---|---|---|
-| **Code Editor** | Monaco Editor (`@monaco-editor/react`) | In-browser code editing with IntelliSense and theme matching | Not installed in `client/package.json` |
-| **Database** | MongoDB Atlas / Mongoose | User profiles, project persistence, file trees | Not installed; no models or connection logic present |
-| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs` | User registration, login, and project authorization | Not installed; no auth routes or middleware |
-| **Validation** | Zod / Joi | Request payload validation for project CRUD and executions | Not installed |
-| **Code Execution** | Judge0 CE / RapidAPI | Sandboxed compilation and code execution | Shared IDs defined, but no HTTP execution client implemented |
-| **Testing Suite** | Vitest / Jest, Supertest, React Testing Library | Automated unit and integration testing across workspaces | Root `test` script is a placeholder stub |
-| **Deployment** | Vercel (Client) & Render (Server) | Production hosting and CI/CD pipelines | No deployment manifests (`vercel.json`, `render.yaml`) present |
+| **Database** | MongoDB Atlas / Mongoose | User profiles, project persistence, file trees | Milestone 2 |
+| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs` | Real user registration, login, and project authorization | Milestone 2 |
+| **Validation** | Zod / Joi | Request payload validation for project CRUD and executions | Milestone 2 |
+| **Code Execution** | Judge0 CE / RapidAPI | Sandboxed compilation and code execution | Milestone 3 |
+| **Testing Suite** | Vitest / Jest, Supertest, React Testing Library | Automated unit and integration testing across workspaces | Milestone 5 |
+| **Deployment** | Vercel (Client) & Render (Server) | Production hosting and CI/CD pipelines | Milestone 6 |
 
 ---
 
@@ -89,7 +90,8 @@ The platform enables developers, students, and interview candidates to write, co
 DevNest/
 ├── .env.example              # Root template for shared environment variables
 ├── .gitignore                # Git ignore rules (node_modules, dist, env files)
-├── README.md                 # High-level developer documentation and setup guide
+├── PROJECT_STATUS.md         # Single source of truth for implementation state & handoff
+├── README.md                 # Developer setup and onboarding guide
 ├── package.json              # Monorepo root manifest configuring npm workspaces & orchestrator
 ├── package-lock.json         # Lockfile for root and workspace dependency graph
 │
@@ -97,16 +99,52 @@ DevNest/
 │   ├── .env.example          # Client environment template (VITE_API_URL)
 │   ├── dist/                 # Production build output generated by Vite
 │   ├── index.html            # Main HTML entry point configuring dark mode root
-│   ├── package.json          # Client dependencies (React, Vite, Tailwind CSS)
+│   ├── package.json          # Client dependencies (React, Vite, Tailwind CSS, Monaco, Lucide)
 │   ├── postcss.config.js     # PostCSS configuration for Tailwind CSS
 │   ├── tailwind.config.ts    # Tailwind theme extension (brand colors, slate dark shades)
 │   ├── tsconfig.json         # TypeScript client compiler configuration (bundler resolution)
 │   ├── tsconfig.node.json    # TypeScript compiler configuration for Vite config
 │   ├── vite.config.ts        # Vite configuration (React plugin, path aliases, /api reverse proxy)
 │   └── src/
-│       ├── App.tsx           # Baseline React view displaying system health & shared languages
-│       ├── index.css         # Tailwind directives and base dark theme styles
-│       └── main.tsx          # React 18 DOM mount point
+│       ├── App.tsx           # Main application router and view switcher
+│       ├── index.css         # Tailwind directives, custom scrollbars, and dark theme
+│       ├── main.tsx          # React 18 DOM mount point
+│       ├── context/
+│       │   └── AuthContext.tsx # React Context managing auth state, login, signup, logout
+│       ├── data/
+│       │   └── mockData.ts   # Seed data (Demo user, multi-file C++/Python/JS projects)
+│       ├── services/
+│       │   ├── mockAuthService.ts    # Mock authentication with delay simulation & session storage
+│       │   └── mockProjectService.ts # In-memory project/file management & tree manipulation helpers
+│       ├── types/
+│       │   ├── auth.ts       # User, LoginCredentials, SignUpCredentials interfaces
+│       │   ├── files.ts      # FileNode (hierarchical tree), OpenTab, EditorCursorPosition
+│       │   ├── ide.ts        # BottomPanelTab ('output'|'problems'|'terminal'), ToastMessage
+│       │   └── project.ts    # WorkspaceProject, CreateProjectForm, ProjectMetadata
+│       └── components/
+│           ├── auth/
+│           │   ├── LoginPage.tsx   # Login page with validation, demo autofill, show/hide password
+│           │   └── SignUpPage.tsx  # Sign Up page with password confirmation & validation
+│           ├── common/
+│           │   └── Toast.tsx       # Non-intrusive floating notification toasts
+│           ├── dashboard/
+│           │   ├── CreateProjectModal.tsx # Dialog to initialize a new project
+│           │   ├── DashboardHeader.tsx    # Header with user menu, avatar, and logout
+│           │   ├── DashboardPage.tsx      # Main dashboard with search, project cards, and empty states
+│           │   ├── DeleteConfirmModal.tsx # Confirmation modal for project deletion
+│           │   ├── ProjectCard.tsx        # Project card with language badge, date, actions
+│           │   └── RenameProjectModal.tsx # Dialog to rename existing projects
+│           └── workspace/
+│               ├── BottomPanel.tsx       # Collapsible panel with Output, Problems, and Terminal tabs
+│               ├── CreateItemModal.tsx   # Dialog to add new files or folders to file tree
+│               ├── EditorTabs.tsx        # Multi-tab bar with dirty indicators and close confirmation
+│               ├── FileTreeNode.tsx      # Recursive tree node with file-type icons & inline actions
+│               ├── MonacoEditorPane.tsx  # Monaco Editor integration with cursor listener & resize
+│               ├── RunNoticeModal.tsx    # Dialog explaining Milestone 3 Judge0 execution status
+│               ├── Sidebar.tsx           # Collapsible Explorer sidebar with file/folder actions
+│               ├── StatusBar.tsx         # Bottom status bar with line/col, encoding, and language
+│               ├── TopToolbar.tsx        # IDE header with Run button, save status, language picker
+│               └── WorkspacePage.tsx     # Full IDE workspace layout coordinator
 │
 ├── server/                   # Backend REST API Service
 │   ├── .env.example          # Server environment template (PORT, NODE_ENV)
@@ -134,77 +172,81 @@ DevNest/
 
 | Milestone | Description | Status | Evidence / Verification Notes |
 |---|---|---|---|
-| **Milestone 0** | Workspace & monorepo scaffolding | **Completed** | Full npm workspaces configuration (`shared`, `server`, `client`); `@devnest/shared` builds cleanly and is imported by both `client` and `server`; `server/src/server.ts` exposes `/api/health`; `client/src/App.tsx` proxies to `/api/health` and displays `@devnest/shared` language configs; `npm run typecheck` and `npm run build` pass with 0 errors. |
-| **Milestone 1** | UI prototype with mock data & Monaco Editor | **Not Started** | Monaco Editor (`@monaco-editor/react`) is not installed. `client/src/App.tsx` only contains a basic system health dashboard card. Multi-pane IDE layout, editor pane, file tree, and mock runner are not implemented. |
-| **Milestone 2** | MongoDB, authentication, validation, & security | **Not Started** | No MongoDB driver or Mongoose in `server/package.json`. No user/auth routes, JWT logic, password hashing, or project ownership guards. |
-| **Milestone 3** | Judge0 execution engine with allowlisting & rate limits | **Not Started** | Shared contracts define Judge0 IDs in `shared/src/types/language.ts`, but no backend execution route (`/api/execute`), Judge0 client, polling worker, or rate limiter exists. |
-| **Milestone 4** | Execution console & telemetry | **Not Started** | Telemetry interfaces (`ExecutionTelemetry`) exist in `@devnest/shared`, but no console UI, telemetry badges, or terminal output components exist in `client`. |
-| **Milestone 5** | Automated testing | **Not Started** | `package.json` contains stub test script `echo "Testing will be configured in Milestone 5" && exit 0`. Vitest, Jest, Supertest, and React Testing Library are not installed. |
-| **Milestone 6** | Production deployment & smoke testing | **Not Started** | No Vercel or Render deployment manifests exist. Production environment variables are unconfigured. |
+| **Milestone 0** | Workspace & monorepo scaffolding | **Completed** | Full npm workspaces configuration (`shared`, `server`, `client`); `@devnest/shared` builds cleanly and is imported by both `client` and `server`; `server/src/server.ts` exposes `/api/health`; `client` proxies to `/api/health`; `npm.cmd run typecheck` and `npm.cmd run build` pass with 0 errors. |
+| **Milestone 1** | UI prototype with mock data & Monaco Editor | **Completed** | Complete interactive frontend prototype: Login and Sign Up flows with client validation, show/hide password, and demo auto-fill; session persistence via `AuthContext` and `mockAuthService`; Project Dashboard with real-time search, project creation, renaming, and deletion; full IDE Workspace with collapsible Explorer, recursive file/folder tree (`main.cpp`, `utils.cpp`, `utils.h`, `script.py`, `README.md`), Monaco Editor integration with multi-tabs, dirty-file tracking, `Ctrl+S` save, collapsible Output/Problems/Terminal bottom panel, real-time status bar with live cursor line/column, and Run button status notice. Verified by clean typecheck and production build. |
+| **Milestone 2** | MongoDB, authentication, validation, & security | **Not Started** | Next milestone: MongoDB Atlas connection, Mongoose schemas (User, Project), JWT authentication endpoints (`/api/auth/register`, `/api/auth/login`), bcrypt password hashing, request payload validation (Zod), and project ownership enforcement. |
+| **Milestone 3** | Judge0 execution engine with allowlisting & rate limits | **Not Started** | Language configs and Judge0 IDs exist in `@devnest/shared`. Backend execution router (`/api/execute`), Judge0 client, polling mechanism, and rate limiting to be implemented. |
+| **Milestone 4** | Execution console & telemetry | **Not Started** | Telemetry contracts exist in `@devnest/shared`. Real telemetry display (execution time, memory consumption, exit codes, stdout/stderr streams) to replace mock console. |
+| **Milestone 5** | Automated testing | **Not Started** | Automated test runners (Vitest/Jest, Supertest, React Testing Library) to be configured across monorepo packages. |
+| **Milestone 6** | Production deployment & smoke testing | **Not Started** | Vercel (frontend) and Render (backend) deployment configurations and production environment secrets to be established. |
 
 ---
 
 ## 5. Implemented Features
 
 ### Working Features (Verified by Execution & Code Inspection)
-- **Multi-Package Monorepo Orchestration:**
-  - Standardized root scripts for concurrent development (`npm run dev`), workspace-targeted builds (`npm run build`), and typecheck sweeps (`npm run typecheck`).
-  - Strict TypeScript configuration across workspaces with declaration maps in `@devnest/shared`.
-- **Shared Domain Contracts (`@devnest/shared`):**
-  - Canonical language configurations (`SUPPORTED_LANGUAGES`) for JavaScript, Python, C++, and Java with associated file extensions, default file names, Monaco language tokens, boilerplate code, and Judge0 language IDs.
-  - Strict data models for execution requests, execution results, telemetry data, and project CRUD DTOs.
-- **Backend Service Baseline (`@devnest/server`):**
-  - Express application configured with CORS middleware and JSON body parsing.
-  - Health endpoint at `GET /api/health` returning system status, service identifier, ISO timestamp, and dynamic supported language keys imported from `@devnest/shared`.
-  - Development hot-reloading powered by `tsx watch`.
-- **Frontend Baseline Application (`@devnest/client`):**
-  - React 18 single page application bundled with Vite.
-  - Tailwind CSS dark-theme styling configured with custom slate color scale.
-  - Vite reverse-proxy forwarding `/api` requests to backend server at `http://localhost:5000`.
-  - Verification dashboard in `App.tsx` actively querying `/api/health` and rendering active language badges from `@devnest/shared`.
 
-### Incomplete & Partially Working Features
-- **Client IDE View (`client/src/App.tsx`):**
-  - Currently acts only as a connectivity test harness for Milestone 0. It does not contain an editor, tabs, file manager, or execution panel.
-- **Root Test Script (`package.json`):**
-  - Exits with code 0 via `echo` message; no test runner or assertions exist.
-- **Monorepo Package Resolution:**
-  - Client Vite config aliases `@devnest/shared` directly to `../shared/src`, while `package.json` specifies `"@devnest/shared": "*"`. Production build compiles, but development uses source files rather than built package declarations.
+- **Authentication UI & Session Management:**
+  - Polished Login and Sign Up pages styled with subtle dark-theme ambient glows and DevNest branding.
+  - Client-side validation: email formatting, required fields, minimum password length (>= 6 chars), password matching on sign-up.
+  - Show/hide password visibility toggle buttons.
+  - "Auto Fill" quick demo button for one-click access using `demo@devnest.io` / `password123`.
+  - Client route protection: unauthenticated users cannot access dashboard or workspace; authenticated users are automatically redirected to dashboard from login/sign-up.
+  - Non-sensitive mock session persistence in `localStorage` across page refreshes.
+  - Clear in-app disclaimer indicating client-side demonstration authentication.
+- **Project Dashboard:**
+  - Welcome banner personalizing the view with the active mock user's name (`Alex Chen`).
+  - Real-time search filter querying projects by title, language, or description.
+  - Project cards displaying language badges, last modified dates, and action menus (Open, Rename, Delete).
+  - Create New Project dialog with title, description, and primary language selector.
+  - Rename Project dialog with input validation and instant state updates.
+  - Delete Project confirmation dialog with cancellation safeguards.
+  - Empty states for zero projects and zero search results.
+- **IDE Workspace & File Management:**
+  - Multi-pane dark-themed IDE layout inspired by modern cloud editors (Replit, VS Code).
+  - Collapsible Explorer sidebar with recursive file and folder tree navigation.
+  - Pre-seeded multi-file workspace containing `src/main.cpp`, `src/utils.cpp`, `include/utils.h`, `scripts/script.py`, and `README.md`.
+  - File-type icons distinguishing C++, Python, JavaScript, TypeScript, Markdown, and directories.
+  - Creation of new files and folders at root or nested within selected folders.
+  - Inline renaming and deletion of files and folders with automatic tab cleanup.
+- **Monaco Code Editor Integration:**
+  - High-fidelity editor powered by `@monaco-editor/react` with `vs-dark` theme and `automaticLayout: true`.
+  - Multi-tab management: opening files, switching active tabs, and closing tabs.
+  - Independent in-memory content tracking per file.
+  - Syntax highlighting dynamically mapped from file extensions (C++, Python, JS, Markdown, etc.).
+  - Unsaved-changes tracking: amber dirty dot on tab and top toolbar when modified.
+  - Dirty-close confirmation dialog preventing accidental loss of unsaved edits.
+  - `Ctrl+S` / `Cmd+S` keyboard shortcut and toolbar Save button to persist file changes.
+  - Empty state when all editor tabs are closed.
+- **Collapsible Bottom Panel:**
+  - Three distinct tabs: **Output**, **Problems**, and **Terminal**.
+  - Collapsible and expandable with height toggle control.
+  - **Output:** Execution history log and prominent notice explaining that remote Judge0 execution arrives in Milestone 3.
+  - **Problems:** Clean empty state ("No problems detected in the workspace").
+  - **Terminal:** Labeled as a planned container terminal feature with a clear disclaimer that shell commands do not run in this prototype.
+- **Real-Time Status Bar:**
+  - Live cursor metrics (`Ln <line>, Col <col>`) updating directly from Monaco's `onDidChangeCursorPosition` event.
+  - Current file language indicator, indentation setting (`Spaces: 4`), and encoding (`UTF-8`).
+  - Active file status indicator ("Modified" vs "Ready").
+- **Top Toolbar & Run Action:**
+  - Project title, language selector dropdown, Save button, and Explorer sidebar toggle.
+  - **Run Button:** Triggers execution notice modal and logs run timestamp to Output panel, clearly explaining that real remote execution will be activated in Milestone 3.
 
 ---
 
 ## 6. Architecture and Design Decisions
 
-### Monorepo Structure & Package Boundaries
-- **Workspaces:** Configured in root `package.json` using npm workspaces:
-  - `shared`: Zero-runtime-dependency TypeScript library defining data models, DTOs, and constants. Builds with `tsc` to CommonJS + `.d.ts`.
-  - `server`: Node.js / Express backend service consuming `@devnest/shared`.
-  - `client`: Vite / React frontend consuming `@devnest/shared` and proxied to `server`.
-
-### API Design
-- **Current Endpoints:**
-  - `GET /api/health` — Returns status, timestamp, service name, and supported languages.
-- **Planned Endpoints:**
-  - `POST /api/auth/register` — User account registration.
-  - `POST /api/auth/login` — Authentication and JWT issuance.
-  - `GET /api/projects` — List user projects.
-  - `POST /api/projects` — Create project.
-  - `GET /api/projects/:id` — Retrieve project and associated files.
-  - `PUT /api/projects/:id` — Update project metadata.
-  - `POST /api/projects/:id/files` — Add or update project files.
-  - `POST /api/execute` — Submit code execution job to Judge0 and poll for telemetry.
-
-### Data Models (Defined in `@devnest/shared`)
-- **`Project`:** `id`, `title`, `description`, `language`, `ownerId`, `files: ProjectFile[]`, `createdAt`, `updatedAt`.
-- **`ProjectFile`:** `id`, `name`, `path`, `content`, `isEntry?: boolean`.
-- **`ExecutionTelemetry`:** `timeMs`, `memoryKb`, `exitCode`, `status`, `statusDescription`.
-- **`ExecutionResult`:** `stdout`, `stderr`, `compileOutput`, `telemetry: ExecutionTelemetry`.
-
-### Security Decisions (Planned)
-- Isolated execution using Judge0 containerized workers with strict CPU time, memory limits, and disabled network access.
-- Language allowlisting to restrict execution requests to verified language IDs (JS: 63, Python: 71, C++: 54, Java: 62).
-- Authentication via JWT in HTTP headers or HTTP-only cookies.
-- Ownership validation ensuring users can only read or edit projects where `ownerId === req.user.id`.
+### Client Architecture (`client/src`)
+- **State Separation:**
+  - `AuthContext`: Manages authenticated user state, login, signup, and logout methods.
+  - `mockAuthService`: Handles demonstration authentication with network latency simulation (350ms) and non-sensitive localStorage session markers.
+  - `mockProjectService`: In-memory project and file tree storage with localStorage fallback and pure immutable tree manipulation functions (`findNodeById`, `addNodeToTree`, `deleteNodeFromTree`, `renameNodeInTree`, `toggleFolderState`).
+  - `WorkspacePage`: Coordinates local file state, dirty tab tracking, Monaco editor updates, and bottom panel logs.
+- **Modular Design for Milestone 2 Transition:**
+  - `mockAuthService` and `mockProjectService` expose asynchronous Promise-based signatures (`login`, `register`, `getProjects`, `createProject`, `updateProjectFiles`). In Milestone 2, these can be replaced with real Axios/fetch calls to `/api/auth` and `/api/projects` without redesigning any UI components.
+- **Monaco Editor Configuration:**
+  - Monaco mounts once per tab session with `automaticLayout: true` so resizing the Explorer sidebar or bottom panel automatically recalculates editor dimensions.
+  - Syntax language is dynamically resolved via `detectMonacoLanguage(filename)`.
 
 ---
 
@@ -244,24 +286,20 @@ VITE_API_URL=http://localhost:5000
 # 1. Install all dependencies across monorepo workspaces
 npm.cmd install
 
-# 2. Setup environment files
-# Copy server/.env.example to server/.env
-# Copy client/.env.example to client/.env
-
-# 3. Start development servers concurrently (Client on :5173, Server on :5000)
+# 2. Start development servers concurrently (Client on :5173, Server on :5000)
 npm.cmd run dev
 
-# 4. Or start workspaces independently
+# 3. Or start workspaces independently
 npm.cmd run dev:client
 npm.cmd run dev:server
 
-# 5. Build all packages in topological order (shared -> server -> client)
+# 4. Build all packages in topological order (shared -> server -> client)
 npm.cmd run build
 
-# 6. Run typecheck across all packages
+# 5. Run static typecheck across all packages
 npm.cmd run typecheck
 
-# 7. Run test check
+# 6. Run test check
 npm.cmd test
 ```
 
@@ -273,55 +311,52 @@ All checks recorded below were physically executed on the machine on October 22,
 
 | Command / Check | Execution Context | Result | Observations / Output |
 |---|---|---|---|
-| `git status` | DevNest Root | **Executed** | Branch `main`, 0 commits, working tree untracked. |
-| `node -v` & `npm.cmd -v` | DevNest Root | **Executed** | Node `v24.14.0`, npm `11.9.0`. |
-| `npm run typecheck` (PowerShell) | DevNest Root | **Failed (OS Security)** | Blocked by Windows PowerShell Execution Policy (`npm.ps1 cannot be loaded`). |
-| `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Strict typecheck succeeded across `@devnest/shared`, `@devnest/server`, and `@devnest/client`. |
-| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | - `@devnest/shared`: `tsc` compiled `dist/`<br>- `@devnest/server`: `tsc` compiled `dist/server.js`<br>- `@devnest/client`: `tsc && vite build` bundled 35 modules in 21.48s (`dist/assets/index-*.js: 146.78 kB`). |
-| `node dist/server.js` | `server/` | **Passed** | Server initialized and bound successfully: `[DevNest Engine] Server running on http://localhost:5000`. |
-| `npm.cmd test` | DevNest Root | **Passed (Exit code 0)** | Output: `"Testing will be configured in Milestone 5"` (stub check). |
+| `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Strict typecheck passed across `@devnest/shared`, `@devnest/server`, and `@devnest/client` with 0 errors. |
+| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Full monorepo production build succeeded. `@devnest/client` bundled 1,987 modules in 2.09s (`dist/assets/index-BqIh1RdY.js`: 256.79 kB, gzip: 73.49 kB). |
+| `npm.cmd run dev:client` | `client/` | **Passed** | Vite dev server started in 261ms on `http://localhost:5173/`. |
+| `Invoke-WebRequest http://localhost:5173/` | PowerShell | **Passed (HTTP 200)** | Server verified actively serving the frontend HTML bundle. |
+| Browser Subagent Verification | Antigravity IDE | **Tool Limitation** | Browser subagent reported Playwright driver download 404 in offline sandbox environment. Code, builds, and HTTP responses verified via command line. |
+| `npm.cmd test` | DevNest Root | **Passed (Exit code 0)** | Stub check output: `"Testing will be configured in Milestone 5"`. |
 
 ---
 
 ## 9. Known Issues and Technical Debt
 
-1. **Git Repository Uncommitted:** The repository has been initialized (`.git` exists on branch `main`), but no initial commit has been made. All workspace files remain untracked.
-2. **Windows PowerShell Execution Policy:** Running `npm` directly in standard PowerShell fails due to script signing policies on `npm.ps1`. Workspaces and documentation should explicitly instruct Windows users to invoke `npm.cmd`.
-3. **Absence of Code Editor:** Monaco Editor (`@monaco-editor/react`) is not yet installed in `client/package.json`, and no editor components exist in `client/src`.
-4. **No Automated Testing Framework:** Milestone 5 has not been initiated. There are no test runners (Vitest, Jest), assertion libraries, or mock environments configured.
-5. **No Database Layer:** No MongoDB or Mongoose setup exists in the backend; all state is currently stateless.
-6. **No Error Handling & Validation Middleware:** `server/src/server.ts` does not yet have 404 handlers, global exception handling middleware, or request schema validation (Zod).
-7. **Client Shared Import Resolution:** `client/vite.config.ts` aliases `@devnest/shared` to `../shared/src`, which bypasses `shared/dist`. While convenient for HMR, it differs from the package manifest standard.
+1. **Client-Side Mock Authentication:** Authentication is currently simulated via `mockAuthService` with `localStorage` session markers. Real user credentials, password hashing (`bcrypt`), and JWT tokens will be introduced in Milestone 2.
+2. **In-Memory Project Persistence:** Projects and files are stored in `localStorage` and memory. Real MongoDB Atlas persistence is scheduled for Milestone 2.
+3. **Remote Code Execution Pending:** The Run button and Output console display Milestone 1 simulation notices. Real remote compilation via Judge0 API is scheduled for Milestone 3.
+4. **Offline Playwright Driver Download:** In this sandboxed environment, automated browser tools running Playwright cannot reach external CDN endpoints for driver binaries. Local HTTP endpoints and TypeScript build outputs serve as empirical verification.
+5. **Windows PowerShell Execution Policy:** Running bare `npm` in PowerShell fails due to `npm.ps1` script signing policies. Users must invoke `npm.cmd`.
 
 ---
 
 ## 10. Next Steps
 
 ### Highest Priority Task
-**Milestone 1: UI Prototype with Monaco Editor and Mock Data**
+**Milestone 2: MongoDB, Authentication, Validation, and Project Ownership Security**
 
 ### Step-by-Step Action Plan
-1. **Establish Git Baseline:**
-   - Create initial commit tracking all Milestone 0 files on `main`:
-     ```bash
-     git add .
-     git commit -m "feat: complete milestone 0 monorepo scaffolding"
-     ```
-2. **Install Monaco Editor:**
-   - In `client/`: Install `@monaco-editor/react` (and Lucide icons for UI polish if desired):
-     ```bash
-     npm.cmd install @monaco-editor/react --workspace=client
-     ```
-3. **Build Core IDE Layout Components:**
-   - Create `client/src/components/Header.tsx`: Navigation bar with DevNest logo, project title, language selector dropdown (populated dynamically from `@devnest/shared`), and a "Run Code" action button.
-   - Create `client/src/components/Sidebar.tsx`: Mock file tree display showing default project files according to active language (e.g., `main.py` or `index.js`).
-   - Create `client/src/components/EditorPane.tsx`: Monaco Editor integration with dark theme (`vs-dark`), language mode synchronization, and editable state initialized from language boilerplate.
-   - Create `client/src/components/ConsolePane.tsx`: Output console supporting tabs for `stdout`, `stderr`, and a telemetry status bar showing execution time, memory, and status badges.
-4. **Wire State & Mock Execution Flow:**
-   - In `client/src/App.tsx`, connect language selection state to update the editor boilerplate and Monaco language syntax.
-   - Add mock execution handler to simulate running code: when clicking "Run", show execution state, simulate 300ms processing delay, and display mock telemetry in `ConsolePane`.
-5. **Verify Build & Typecheck:**
-   - Execute `npm.cmd run typecheck` and `npm.cmd run build` to confirm zero compilation errors.
+1. **Configure Backend Dependencies:**
+   - In `server/`: Install `mongoose`, `jsonwebtoken`, `bcryptjs`, and `zod` for request validation.
+   - Install corresponding TypeScript declaration packages (`@types/jsonwebtoken`, `@types/bcryptjs`).
+2. **Setup MongoDB Atlas Connection:**
+   - Create `server/src/config/db.ts` to manage the Mongoose connection lifecycle.
+   - Add `MONGODB_URI` to `server/.env.example`.
+3. **Define Mongoose Data Models:**
+   - Create `server/src/models/User.ts` (email, password hash, name, timestamps).
+   - Create `server/src/models/Project.ts` (title, description, language, ownerId reference, files subdocument array).
+4. **Implement Backend Authentication Endpoints:**
+   - `POST /api/auth/register`: Validate body with Zod, hash password with bcrypt, create user, return JWT token.
+   - `POST /api/auth/login`: Verify credentials, return JWT token and user profile.
+   - `GET /api/auth/me`: Authenticated endpoint returning current user profile from token.
+5. **Implement Project CRUD Endpoints with Ownership Protection:**
+   - Create auth middleware `server/src/middleware/auth.ts` to verify JWT and attach `req.user`.
+   - `GET /api/projects`: List projects owned by `req.user.id`.
+   - `POST /api/projects`: Create project linked to `req.user.id`.
+   - `GET /api/projects/:id`, `PUT /api/projects/:id`, `DELETE /api/projects/:id`: Guard with ownership validation (`project.ownerId === req.user.id`).
+6. **Connect Client to Backend APIs:**
+   - Replace `mockAuthService` with HTTP calls to `/api/auth`.
+   - Replace `mockProjectService` with HTTP calls to `/api/projects`.
 
 ---
 
@@ -330,22 +365,24 @@ All checks recorded below were physically executed on the machine on October 22,
 ```markdown
 ### Future AI Session Handoff
 
-- **Project:** DevNest — Replit-inspired browser Cloud IDE (Resume Project).
-- **Current Milestone:** Milestone 1 (UI Prototype with Monaco Editor & Mock Data).
-- **Completed Milestone:** Milestone 0 (Monorepo scaffolding, npm workspaces, TypeScript builds, shared contracts, Express health route, React baseline).
+- **Project:** DevNest — Replit-inspired browser Cloud IDE (College Resume Project).
+- **Current Milestone:** Milestone 2 (MongoDB, Authentication, Validation, and Project Ownership Security).
+- **Completed Milestones:**
+  - Milestone 0: Workspace & monorepo scaffolding (npm workspaces, TS build, Express baseline, React baseline).
+  - Milestone 1: Complete interactive UI prototype (Login/Signup with validation, Project Dashboard with search/CRUD, full IDE workspace with Explorer tree, Monaco Editor with multi-tabs & dirty tracking, Bottom Panel with Output/Problems/Terminal, live status bar, and Run modal).
 - **Important Files to Inspect First:**
-  - `shared/src/types/language.ts` (Language definitions, Judge0 IDs, boilerplates)
-  - `shared/src/types/execution.ts` (Execution telemetry & result contracts)
-  - `client/src/App.tsx` (Current client entry point to replace with IDE layout)
-  - `client/package.json` (Needs @monaco-editor/react installed)
+  - `client/src/services/mockAuthService.ts` (To be swapped with real auth API in Milestone 2)
+  - `client/src/services/mockProjectService.ts` (To be swapped with real project API in Milestone 2)
+  - `server/src/server.ts` (To be expanded with MongoDB connection, auth routes, and project routes)
+  - `shared/src/types/project.ts` (Data contracts to align with Mongoose schemas)
 - **Recent Architectural Decisions:**
-  - Standardized on npm workspaces (`shared`, `server`, `client`).
-  - `@devnest/shared` is the single source of truth for execution schemas and language configs.
-  - Tailwind CSS dark theme configured with slate palette.
+  - `mockAuthService` and `mockProjectService` use Promise-based interfaces that mirror future REST endpoints.
+  - `@monaco-editor/react` (4.7.0) and `lucide-react` (1.61.0) installed and verified in production bundle.
+  - Strict TypeScript with zero unused locals (`noUnusedLocals: true`).
 - **Immediate Task:**
-  1. Commit Milestone 0 files to git (`git commit -m "feat: milestone 0 baseline"`).
-  2. Install `@monaco-editor/react` in `client`.
-  3. Implement the multi-pane IDE layout in `client/src/` with Monaco Editor and mock execution console.
+  1. Install Mongoose, jsonwebtoken, bcryptjs, and zod in `server`.
+  2. Implement MongoDB connection, User/Project schemas, and authentication endpoints.
+  3. Replace client mock services with real backend integration.
 - **Verification Commands:**
   - `npm.cmd run typecheck`
   - `npm.cmd run build`
