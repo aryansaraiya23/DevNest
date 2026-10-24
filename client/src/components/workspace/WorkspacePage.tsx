@@ -4,7 +4,6 @@ import { FileNode, OpenTab, EditorCursorPosition, FileSystemItemType } from '../
 import { BottomPanelTab } from '../../types/ide';
 import { SupportedLanguage } from '@devnest/shared';
 import {
-  mockProjectService,
   findNodeById,
   updateNodeContent,
   toggleFolderState,
@@ -13,6 +12,7 @@ import {
   renameNodeInTree,
   detectMonacoLanguage,
 } from '../../services/mockProjectService';
+import { projectApiService } from '../../services/projectApi';
 import { TopToolbar } from './TopToolbar';
 import { Sidebar } from './Sidebar';
 import { EditorTabs } from './EditorTabs';
@@ -55,7 +55,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
     let isMounted = true;
     setIsLoading(true);
 
-    mockProjectService.getProjectById(projectId).then((proj) => {
+    projectApiService.getProjectById(projectId).then((proj) => {
       if (!isMounted) return;
       if (!proj) {
         onShowToast('Project not found', 'Returning to dashboard', 'error');
@@ -122,8 +122,8 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
       prev.map((t) => (t.fileId === activeFileId ? { ...t, isDirty: false } : t))
     );
 
-    // Persist to mock project service
-    await mockProjectService.updateProjectFiles(project.id, updatedFiles);
+    // Persist to real API
+    await projectApiService.updateProjectFiles(project.id, updatedFiles);
     onShowToast('Saved', `Saved ${activeTab?.fileName || 'file'}.`, 'success');
   }, [activeFileId, project, files, activeContent, activeTab, onShowToast]);
 
@@ -230,13 +230,13 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
       children: type === 'folder' ? [] : undefined,
       content:
         type === 'file'
-          ? `// DevNest File: ${name}\n// Created in Milestone 1\n`
+          ? `// DevNest File: ${name}\n`
           : undefined,
     };
 
     const updated = addNodeToTree(files, parentFolderId, newItem);
     setFiles(updated);
-    await mockProjectService.updateProjectFiles(project.id, updated);
+    await projectApiService.updateProjectFiles(project.id, updated);
 
     // If file, open it in tabs immediately
     if (type === 'file') {
@@ -258,7 +258,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
     const updated = deleteNodeFromTree(files, nodeId);
     setFiles(updated);
-    await mockProjectService.updateProjectFiles(project.id, updated);
+    await projectApiService.updateProjectFiles(project.id, updated);
 
     // If active tab or open tab was deleted, remove from tabs
     handleCloseTab(nodeId, true);
@@ -270,7 +270,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
     if (!project) return;
     const updated = renameNodeInTree(files, nodeId, newName);
     setFiles(updated);
-    await mockProjectService.updateProjectFiles(project.id, updated);
+    await projectApiService.updateProjectFiles(project.id, updated);
 
     // Update tab name if open
     setTabs((prev) =>
@@ -291,7 +291,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   // Change primary language
   const handleLanguageChange = async (lang: SupportedLanguage) => {
     if (!project) return;
-    await mockProjectService.updateProjectLanguage(project.id, lang);
+    await projectApiService.updateProjectLanguage(project.id, lang);
     setProject((prev) => (prev ? { ...prev, language: lang } : null));
     onShowToast('Language Updated', `Project environment set to ${lang.toUpperCase()}.`, 'info');
   };
@@ -304,7 +304,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
     const timestamp = new Date().toLocaleTimeString();
     const entry = `[${timestamp}] [DevNest Engine] Run requested for project "${project?.title}" (${project?.language.toUpperCase()})`;
-    const notice = `[${timestamp}] [Milestone 1 Info] Code execution backend (Judge0) will be active in Milestone 3.`;
+    const notice = `[${timestamp}] [DevNest Engine] Code execution backend (Judge0) will be active in Milestone 4.`;
 
     setOutputLogs((prev) => [...prev, entry, notice]);
   };

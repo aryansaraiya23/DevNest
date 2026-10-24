@@ -5,6 +5,7 @@ import { SUPPORTED_LANGUAGES } from '@devnest/shared';
 import { env } from './config/env';
 import { connectDatabase, setupDatabaseGracefulShutdown } from './config/db';
 import authRoutes from './routes/auth.routes';
+import projectRoutes from './routes/project.routes';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(cookieParser());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({

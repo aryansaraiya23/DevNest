@@ -1,8 +1,8 @@
 # DevNest — Project Status & Architecture Guide
 
-> **Current Status:** Milestones 0 & 1 Complete • Milestone 2 Auth + MongoDB Verified (Project CRUD still mock) • Milestone 3 Next  
-> **Last Verified:** October 23, 2026  
-> **Branch:** `main` (Milestone 2 auth/DB changes unstaged — do not commit secrets)
+> **Current Status:** Milestones 0, 1 & 2 Complete • Milestone 3 Complete (Project & File System API) • Milestone 4 Next  
+> **Last Verified:** October 24, 2026  
+> **Branch:** `main` (M3 changes unstaged — do not commit secrets)
 
 ---
 
@@ -75,12 +75,12 @@ The platform enables developers, students, and interview candidates to write, co
 
 | Layer | Planned Technology | Intended Purpose | Target Milestone |
 |---|---|---|---|
-| **Database** | MongoDB Atlas / Mongoose `^9.11.3` | User persistence connected; project/file schemas still pending | Milestone 2 (partial) |
-| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs`, HTTP-only cookies | Register / login / logout / session restore implemented | Milestone 2 (partial) |
-| **Validation** | Zod `^4.6.7` | Auth request validation implemented; project CRUD validation pending | Milestone 2 (partial) |
-| **Code Execution** | Judge0 CE / RapidAPI | Sandboxed compilation and code execution | Milestone 3 |
-| **Testing Suite** | Vitest + Supertest (server auth); broader suite later | Server auth unit/route tests green; client RTL pending | Milestone 2 / 5 |
-| **Deployment** | Vercel (Client) & Render (Server) | Production hosting and CI/CD pipelines | Milestone 6 |
+| **Database** | MongoDB Atlas / Mongoose `^9.11.3` | User + Project persistence; recursive FileNode sub-documents; compound owner index | Milestone 2 & 3 (complete) |
+| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs`, HTTP-only cookies | Register / login / logout / session restore implemented | Milestone 2 (complete) |
+| **Validation** | Zod `^4.6.7` | Auth + project CRUD + file-tree validators implemented | Milestone 2 & 3 (complete) |
+| **Code Execution** | Judge0 CE / RapidAPI | Sandboxed compilation and code execution | Milestone 4 |
+| **Testing Suite** | Vitest + Supertest (server auth + project); broader suite later | 63/63 server tests passing (auth + project service + route tests) | Milestone 2 / 3 / 6 |
+| **Deployment** | Vercel (Client) & Render (Server) | Production hosting and CI/CD pipelines | Milestone 7 |
 
 ---
 
@@ -140,7 +140,7 @@ DevNest/
 │               ├── EditorTabs.tsx        # Multi-tab bar with dirty indicators and close confirmation
 │               ├── FileTreeNode.tsx      # Recursive tree node with file-type icons & inline actions
 │               ├── MonacoEditorPane.tsx  # Monaco Editor integration with cursor listener & resize
-│               ├── RunNoticeModal.tsx    # Dialog explaining Milestone 3 Judge0 execution status
+│               ├── RunNoticeModal.tsx    # Dialog explaining Milestone 4 Judge0 execution status
 │               ├── Sidebar.tsx           # Collapsible Explorer sidebar with file/folder actions
 │               ├── StatusBar.tsx         # Bottom status bar with line/col, encoding, and language
 │               ├── TopToolbar.tsx        # IDE header with Run button, save status, language picker
@@ -178,11 +178,13 @@ DevNest/
 |---|---|---|---|
 | **Milestone 0** | Workspace & monorepo scaffolding | **Completed** | Full npm workspaces configuration (`shared`, `server`, `client`); `@devnest/shared` builds cleanly and is imported by both `client` and `server`; `server/src/server.ts` exposes `/api/health`; `client` proxies to `/api/health`; `npm.cmd run typecheck` and `npm.cmd run build` pass with 0 errors. |
 | **Milestone 1** | UI prototype with mock data & Monaco Editor | **Completed** | Complete interactive frontend prototype: Login and Sign Up flows with client validation, show/hide password, and demo auto-fill; session persistence via `AuthContext` and `mockAuthService`; Project Dashboard with real-time search, project creation, renaming, and deletion; full IDE Workspace with collapsible Explorer, recursive file/folder tree (`main.cpp`, `utils.cpp`, `utils.h`, `script.py`, `README.md`), Monaco Editor integration with multi-tabs, dirty-file tracking, `Ctrl+S` save, collapsible Output/Problems/Terminal bottom panel, real-time status bar with live cursor line/column, and Run button status notice. Verified by clean typecheck and production build. |
-| **Milestone 2** | MongoDB, authentication, validation, & security | **In Progress (Auth + DB verified)** | MongoDB Atlas connects via Mongoose; User model; JWT in HTTP-only cookies; `/api/auth/register|login|logout|me`; Zod auth validators; rate limiting; client `authApi` + `AuthContext` session restore. **Remaining:** Project Mongoose model + CRUD APIs with ownership, replace `mockProjectService`. |
-| **Milestone 3** | Judge0 execution engine with allowlisting & rate limits | **Not Started** | Language configs and Judge0 IDs exist in `@devnest/shared`. Backend execution router (`/api/execute`), Judge0 client, polling mechanism, and rate limiting to be implemented. |
-| **Milestone 4** | Execution console & telemetry | **Not Started** | Telemetry contracts exist in `@devnest/shared`. Real telemetry display (execution time, memory consumption, exit codes, stdout/stderr streams) to replace mock console. |
-| **Milestone 5** | Automated testing | **Not Started** | Automated test runners (Vitest/Jest, Supertest, React Testing Library) to be configured across monorepo packages. |
-| **Milestone 6** | Production deployment & smoke testing | **Not Started** | Vercel (frontend) and Render (backend) deployment configurations and production environment secrets to be established. |
+| **Milestone 2** | MongoDB, authentication, validation, & security | **Completed** | MongoDB Atlas connects via Mongoose; User model; JWT in HTTP-only cookies; `/api/auth/register|login|logout|me`; Zod auth validators; rate limiting; client `authApi` + `AuthContext` session restore. Auth Vitest suite: 26/26 passing. |
+| **Milestone 3** | Project & File System API | **Completed** | `Project` Mongoose model with recursive `FileNode` sub-document schema; `ProjectService` with ownership enforcement on every mutation (prevents IDOR); `/api/projects` CRUD routes and `/api/projects/:id/files` + `/api/projects/:id/language` endpoints, all behind `requireAuth`; Zod validators for create, rename, and file-tree payloads; `projectApiService` client replacing `mockProjectService` in `DashboardPage` and `WorkspacePage`; pure file-tree helpers preserved in `mockProjectService.ts`; project + route Vitest suite: 37 new tests, all passing. Total test suite: 63/63. |
+| **Milestone 3** | Project & File System API | **Not Started** | Project and virtual file/folder storage in MongoDB. `/api/projects` CRUD (create, list, rename, delete) and `/api/projects/:id/files` file CRUD, all ownership-enforced via `requireAuth` to prevent IDOR. Zod validators for project and file payloads. Replace `mockProjectService` in dashboard and IDE with a real `projectApi` client. Add project + file route/service tests alongside existing auth Vitest suite. |
+| **Milestone 4** | Judge0 execution engine with allowlisting & rate limits | **Not Started** | Language configs and Judge0 IDs exist in `@devnest/shared`. Backend execution router (`/api/execute`), Judge0 client, polling mechanism, and rate limiting to be implemented. |
+| **Milestone 5** | Execution console & telemetry | **Not Started** | Telemetry contracts exist in `@devnest/shared`. Real telemetry display (execution time, memory consumption, exit codes, stdout/stderr streams) to replace mock console. |
+| **Milestone 6** | Automated testing | **Not Started** | Automated test runners (Vitest/Jest, Supertest, React Testing Library) to be configured across monorepo packages. |
+| **Milestone 7** | Production deployment & smoke testing | **Not Started** | Vercel (frontend) and Render (backend) deployment configurations and production environment secrets to be established. |
 
 ---
 
@@ -197,7 +199,7 @@ DevNest/
   - "Auto Fill" quick demo button for one-click access using `demo@devnest.io` / `password123`.
   - Client route protection: unauthenticated users cannot access dashboard or workspace; authenticated users are automatically redirected to dashboard from login/sign-up.
   - Real backend auth via `authApi` (HTTP-only JWT cookie; session restore through `GET /api/auth/me`).
-  - Dashboard/workspace project data still mocked via `mockProjectService` until Milestone 2 CRUD lands.
+  - Dashboard/workspace project data persisted in MongoDB via `projectApiService` and `/api/projects`.
 - **Project Dashboard:**
   - Welcome banner personalizing the view with the active mock user's name (`Alex Chen`).
   - Real-time search filter querying projects by title, language, or description.
@@ -225,7 +227,7 @@ DevNest/
 - **Collapsible Bottom Panel:**
   - Three distinct tabs: **Output**, **Problems**, and **Terminal**.
   - Collapsible and expandable with height toggle control.
-  - **Output:** Execution history log and prominent notice explaining that remote Judge0 execution arrives in Milestone 3.
+  - **Output:** Execution history log and prominent notice explaining that remote Judge0 execution arrives in Milestone 4.
   - **Problems:** Clean empty state ("No problems detected in the workspace").
   - **Terminal:** Labeled as a planned container terminal feature with a clear disclaimer that shell commands do not run in this prototype.
 - **Real-Time Status Bar:**
@@ -234,7 +236,7 @@ DevNest/
   - Active file status indicator ("Modified" vs "Ready").
 - **Top Toolbar & Run Action:**
   - Project title, language selector dropdown, Save button, and Explorer sidebar toggle.
-  - **Run Button:** Triggers execution notice modal and logs run timestamp to Output panel, clearly explaining that real remote execution will be activated in Milestone 3.
+  - **Run Button:** Triggers execution notice modal and logs run timestamp to Output panel, clearly explaining that real remote execution will be activated in Milestone 4.
 
 ---
 
@@ -246,8 +248,8 @@ DevNest/
   - `mockAuthService`: Handles demonstration authentication with network latency simulation (350ms) and non-sensitive localStorage session markers.
   - `mockProjectService`: In-memory project and file tree storage with localStorage fallback and pure immutable tree manipulation functions (`findNodeById`, `addNodeToTree`, `deleteNodeFromTree`, `renameNodeInTree`, `toggleFolderState`).
   - `WorkspacePage`: Coordinates local file state, dirty tab tracking, Monaco editor updates, and bottom panel logs.
-- **Modular Design for Milestone 2 Transition:**
-  - `mockAuthService` and `mockProjectService` expose asynchronous Promise-based signatures (`login`, `register`, `getProjects`, `createProject`, `updateProjectFiles`). In Milestone 2, these can be replaced with real Axios/fetch calls to `/api/auth` and `/api/projects` without redesigning any UI components.
+- **Modular Design for Milestone 3 Transition:**
+  - `mockAuthService` and `mockProjectService` expose asynchronous Promise-based signatures (`login`, `register`, `getProjects`, `createProject`, `updateProjectFiles`). In Milestone 3, these were replaced with real `projectApiService` calls to `/api/projects` without redesigning any UI components. The pure file-tree helper functions (`findNodeById`, `addNodeToTree`, etc.) and `detectMonacoLanguage` remain in `mockProjectService.ts` and are still used by `WorkspacePage`.
 - **Monaco Editor Configuration:**
   - Monaco mounts once per tab session with `automaticLayout: true` so resizing the Explorer sidebar or bottom panel automatically recalculates editor dimensions.
   - Syntax language is dynamically resolved via `detectMonacoLanguage(filename)`.
@@ -325,17 +327,17 @@ All checks recorded below were physically executed on the machine on October 23,
 | `GET /api/health` | PowerShell | **Passed (HTTP 200)** | `{"status":"ok","service":"devnest-server",...}`. |
 | `npm.cmd run dev:client` | `client/` | **Passed** | Vite ready in ~264ms on `http://localhost:5173/`. |
 | `Invoke-WebRequest http://localhost:5173/` | PowerShell | **Passed (HTTP 200)** | Frontend HTML served. |
-| `npm.cmd run test` (server Vitest) | `server/` | **Passed (26/26)** | `auth.service.test.ts` (12) + `auth.routes.test.ts` (14). |
+| `npm.cmd run test` (server Vitest) | `server/` | **Passed (63/63)** | `auth.service.test.ts` (12) + `auth.routes.test.ts` (14) + `project.service.test.ts` (14) + `project.routes.test.ts` (23). |
 | `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Shared, server, client — 0 errors. |
-| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Client bundle ~255.79 kB JS (gzip 73.02 kB). |
+| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Client bundle ~257.42 kB JS (gzip 73.60 kB). |
 
 ---
 
 ## 9. Known Issues and Technical Debt
 
 1. **Node.js Windows DNS / `querySrv ECONNREFUSED` (mitigated in code):** On Node `v24.14.0` (c-ares `1.34.6`), `dns.getServers()` incorrectly returns `127.0.0.1`, breaking `mongodb+srv` SRV lookups. Mitigated by `server/src/config/dns.ts` (loopback-only → public DNS fallback). **Preferred long-term fix:** upgrade Node.js to **>= 24.19.0** (includes c-ares fix). Optional OS step: set Wi-Fi DNS to `1.1.1.1` / `8.8.8.8` via Settings → Network → Wi-Fi → DNS — helpful for other tools, but not required once Node is upgraded or the app fallback is present.
-2. **In-Memory Project Persistence:** Dashboard/workspace still use `mockProjectService` + `localStorage`. Project Mongoose model and ownership-guarded CRUD remain for Milestone 2 completion.
-3. **Remote Code Execution Pending:** Run button / Output panel still show Milestone 3 placeholders for Judge0.
+2. **In-Memory Project Persistence:** ~~Dashboard/workspace still use `mockProjectService` + `localStorage`.~~ **Resolved in Milestone 3** — projects and file trees are now persisted in MongoDB via `/api/projects`.
+3. **Remote Code Execution Pending:** Run button / Output panel still show Milestone 4 placeholders for Judge0.
 4. **Legacy `mockAuthService`:** File remains in the repo but `AuthContext` uses `authApi` against the real backend.
 5. **Windows PowerShell Execution Policy:** Use `npm.cmd` instead of bare `npm` when `npm.ps1` is blocked.
 
@@ -344,17 +346,14 @@ All checks recorded below were physically executed on the machine on October 23,
 ## 10. Next Steps
 
 ### Highest Priority Task
-**Finish Milestone 2: Project persistence + ownership-guarded CRUD** (auth + MongoDB connection already verified).
+**Implement Milestone 4: Judge0 execution engine** (auth + MongoDB + project/file persistence all complete).
 
 ### Step-by-Step Action Plan
-1. **Optional environment hardening:** Upgrade Node.js to `>= 24.19.0` so the Windows c-ares DNS bug is fixed at the runtime layer (code fallback can remain as defense-in-depth).
-2. **Define Project model:** `server/src/models/Project.ts` (title, description, language, ownerId, files tree, timestamps).
-3. **Implement Project CRUD with ownership:**
-   - Routes under `/api/projects` protected by `requireAuth`.
-   - List / create / get / update / delete scoped to `req.user.id`.
-   - Zod validators for create/update payloads.
-4. **Wire client:** Replace `mockProjectService` usage in Dashboard + Workspace with a real `projectApi` (`credentials: 'include'`).
-5. **Add project route/service tests** alongside existing auth Vitest suite.
+1. **Optional environment hardening:** Upgrade Node.js to `>= 24.19.0` so the Windows c-ares DNS bug is fixed at the runtime layer.
+2. **Judge0 backend route:** `POST /api/execute` — accepts `{ language, sourceCode, stdin? }`, submits to Judge0 CE / RapidAPI, polls for result, returns `ExecutionResult` (stdout, stderr, telemetry).
+3. **Allowlisting and rate limiting:** Restrict to supported languages; per-user rate limit to prevent abuse.
+4. **Wire client:** Replace the run-notice placeholder in `WorkspacePage` with a real `executeApi` call; display output in the Output panel.
+5. **Telemetry display (Milestone 5):** Show execution time, memory, exit code in `BottomPanel`.
 
 ---
 
@@ -364,17 +363,23 @@ All checks recorded below were physically executed on the machine on October 23,
 ### Future AI Session Handoff
 
 - **Project:** DevNest — Replit-inspired browser Cloud IDE (College Resume Project).
-- **Current Milestone:** Milestone 2 (Auth + MongoDB done; Project CRUD still mock).
+- **Current Milestone:** Milestone 3 complete → Milestone 4 (Judge0 execution engine) next.
 - **Completed / Verified:**
-  - Milestone 0 & 1 complete.
-  - Milestone 2 auth stack: User model, JWT HTTP-only cookies, `/api/auth/*`, Zod, rate limit, client `authApi` + session restore via `/me`.
-  - MongoDB Atlas connection verified after DNS workaround (`server/src/config/dns.ts` + `db.ts`).
+  - Milestones 0, 1, 2 & 3 complete.
+  - Milestone 3: `Project` Mongoose model (recursive `FileNode` sub-documents); `ProjectService` with IDOR-preventing ownership checks; `/api/projects` CRUD + `/api/projects/:id/files` + `/api/projects/:id/language`; Zod validators; `projectApiService` client; `DashboardPage` + `WorkspacePage` wired to real API. 63/63 Vitest tests passing.
 - **Important Files:**
-  - `server/src/config/dns.ts`, `server/src/config/db.ts`, `server/src/server.ts`
-  - `server/src/routes/auth.routes.ts`, `server/src/services/auth.service.ts`, `server/src/models/User.ts`
-  - `client/src/services/authApi.ts`, `client/src/context/AuthContext.tsx`
-  - `client/src/services/mockProjectService.ts` (still active — next swap target)
-- **Immediate Task:** Project Mongoose model + `/api/projects` CRUD with ownership; replace client mock project service.
+  - `server/src/models/Project.ts` — Project + recursive FileNode Mongoose schema
+  - `server/src/services/project.service.ts` — ownership-enforced CRUD
+  - `server/src/controllers/project.controller.ts` — HTTP layer
+  - `server/src/routes/project.routes.ts` — all routes behind `requireAuth`
+  - `server/src/validators/project.validator.ts` — Zod schemas
+  - `server/src/tests/project.service.test.ts` — 14 unit tests
+  - `server/src/tests/project.routes.test.ts` — 23 integration tests
+  - `client/src/services/projectApi.ts` — real API client (replaces mockProjectService)
+  - `client/src/services/mockProjectService.ts` — pure file-tree helpers still used by WorkspacePage
+  - `client/src/components/dashboard/DashboardPage.tsx` — wired to projectApiService
+  - `client/src/components/workspace/WorkspacePage.tsx` — wired to projectApiService
+- **Immediate Task:** Judge0 execution backend (`POST /api/execute`) + client output display.
 - **Runtime note:** Node `v24.14.0` on Windows has c-ares DNS bug; prefer upgrade to `>= 24.19.0`. Do not commit `.env`.
 - **Verification Commands:**
   - `npm.cmd run typecheck`

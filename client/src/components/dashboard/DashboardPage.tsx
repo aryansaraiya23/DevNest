@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { WorkspaceProject, CreateProjectForm } from '../../types/project';
-import { mockProjectService } from '../../services/mockProjectService';
+import { projectApiService } from '../../services/projectApi';
 import { DashboardHeader } from './DashboardHeader';
 import { ProjectCard } from './ProjectCard';
 import { CreateProjectModal } from './CreateProjectModal';
@@ -28,7 +28,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenProject, onS
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
-      const data = await mockProjectService.getProjects();
+      const data = await projectApiService.getProjects();
       setProjects(data);
     } catch {
       onShowToast('Error', 'Failed to load projects', 'error');
@@ -44,7 +44,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenProject, onS
   const handleCreate = async (form: CreateProjectForm) => {
     if (!user) return;
     try {
-      const created = await mockProjectService.createProject(form, user.id, user.name);
+      const created = await projectApiService.createProject(form, user.id, user.name);
       setProjects((prev) => [created, ...prev]);
       onShowToast('Project Created', `"${created.title}" is ready in your workspace.`, 'success');
     } catch (err) {
@@ -55,7 +55,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenProject, onS
 
   const handleRename = async (id: string, newTitle: string) => {
     try {
-      const updated = await mockProjectService.renameProject(id, newTitle);
+      const updated = await projectApiService.renameProject(id, newTitle);
       setProjects((prev) => prev.map((p) => (p.id === id ? updated : p)));
       onShowToast('Renamed', `Project renamed to "${newTitle}".`, 'info');
     } catch (err) {
@@ -66,7 +66,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenProject, onS
 
   const handleDelete = async (id: string) => {
     try {
-      await mockProjectService.deleteProject(id);
+      await projectApiService.deleteProject(id);
       setProjects((prev) => prev.filter((p) => p.id !== id));
       onShowToast('Project Deleted', 'Project removed from workspace.', 'warning');
     } catch (err) {
