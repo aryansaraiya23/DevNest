@@ -1,8 +1,8 @@
 # DevNest — Project Status & Architecture Guide
 
-> **Current Status:** Milestone 0 & Milestone 1 Complete • Milestone 2 (MongoDB, Auth, Validation) Ready to Start  
-> **Last Verified:** October 22, 2026  
-> **Branch:** `main` (Working directory changes staged/handled by user)
+> **Current Status:** Milestones 0 & 1 Complete • Milestone 2 Auth + MongoDB Verified (Project CRUD still mock) • Milestone 3 Next  
+> **Last Verified:** October 23, 2026  
+> **Branch:** `main` (Milestone 2 auth/DB changes unstaged — do not commit secrets)
 
 ---
 
@@ -75,11 +75,11 @@ The platform enables developers, students, and interview candidates to write, co
 
 | Layer | Planned Technology | Intended Purpose | Target Milestone |
 |---|---|---|---|
-| **Database** | MongoDB Atlas / Mongoose | User profiles, project persistence, file trees | Milestone 2 |
-| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs` | Real user registration, login, and project authorization | Milestone 2 |
-| **Validation** | Zod / Joi | Request payload validation for project CRUD and executions | Milestone 2 |
+| **Database** | MongoDB Atlas / Mongoose `^9.11.3` | User persistence connected; project/file schemas still pending | Milestone 2 (partial) |
+| **Authentication** | JWT (`jsonwebtoken`), `bcryptjs`, HTTP-only cookies | Register / login / logout / session restore implemented | Milestone 2 (partial) |
+| **Validation** | Zod `^4.6.7` | Auth request validation implemented; project CRUD validation pending | Milestone 2 (partial) |
 | **Code Execution** | Judge0 CE / RapidAPI | Sandboxed compilation and code execution | Milestone 3 |
-| **Testing Suite** | Vitest / Jest, Supertest, React Testing Library | Automated unit and integration testing across workspaces | Milestone 5 |
+| **Testing Suite** | Vitest + Supertest (server auth); broader suite later | Server auth unit/route tests green; client RTL pending | Milestone 2 / 5 |
 | **Deployment** | Vercel (Client) & Render (Server) | Production hosting and CI/CD pipelines | Milestone 6 |
 
 ---
@@ -147,12 +147,16 @@ DevNest/
 │               └── WorkspacePage.tsx     # Full IDE workspace layout coordinator
 │
 ├── server/                   # Backend REST API Service
-│   ├── .env.example          # Server environment template (PORT, NODE_ENV)
-│   ├── dist/                 # Compiled JavaScript output from tsc
-│   ├── package.json          # Server dependencies (Express, CORS, Dotenv, TSX)
-│   ├── tsconfig.json         # TypeScript CommonJS configuration for Node.js
+│   ├── .env.example          # PORT, CLIENT_ORIGIN, MONGODB_URI, JWT_SECRET templates
+│   ├── vitest.config.ts      # Vitest config for auth unit/route tests
+│   ├── package.json          # Express, Mongoose, JWT, bcrypt, Zod, Vitest, …
+│   ├── tsconfig.json
 │   └── src/
-│       └── server.ts         # Express server entry point exposing /api/health
+│       ├── server.ts         # Express app: CORS+cookies, /api/auth, /api/health, DB boot
+│       ├── config/           # env.ts, db.ts, dns.ts (Windows c-ares SRV workaround)
+│       ├── models/User.ts
+│       ├── routes|controllers|services|validators|middleware/  # Auth stack
+│       └── tests/            # auth.service + auth.routes Vitest suites
 │
 └── shared/                   # Shared TypeScript Library (@devnest/shared)
     ├── dist/                 # Compiled declarations (.d.ts) and JS bundle
@@ -174,7 +178,7 @@ DevNest/
 |---|---|---|---|
 | **Milestone 0** | Workspace & monorepo scaffolding | **Completed** | Full npm workspaces configuration (`shared`, `server`, `client`); `@devnest/shared` builds cleanly and is imported by both `client` and `server`; `server/src/server.ts` exposes `/api/health`; `client` proxies to `/api/health`; `npm.cmd run typecheck` and `npm.cmd run build` pass with 0 errors. |
 | **Milestone 1** | UI prototype with mock data & Monaco Editor | **Completed** | Complete interactive frontend prototype: Login and Sign Up flows with client validation, show/hide password, and demo auto-fill; session persistence via `AuthContext` and `mockAuthService`; Project Dashboard with real-time search, project creation, renaming, and deletion; full IDE Workspace with collapsible Explorer, recursive file/folder tree (`main.cpp`, `utils.cpp`, `utils.h`, `script.py`, `README.md`), Monaco Editor integration with multi-tabs, dirty-file tracking, `Ctrl+S` save, collapsible Output/Problems/Terminal bottom panel, real-time status bar with live cursor line/column, and Run button status notice. Verified by clean typecheck and production build. |
-| **Milestone 2** | MongoDB, authentication, validation, & security | **Not Started** | Next milestone: MongoDB Atlas connection, Mongoose schemas (User, Project), JWT authentication endpoints (`/api/auth/register`, `/api/auth/login`), bcrypt password hashing, request payload validation (Zod), and project ownership enforcement. |
+| **Milestone 2** | MongoDB, authentication, validation, & security | **In Progress (Auth + DB verified)** | MongoDB Atlas connects via Mongoose; User model; JWT in HTTP-only cookies; `/api/auth/register|login|logout|me`; Zod auth validators; rate limiting; client `authApi` + `AuthContext` session restore. **Remaining:** Project Mongoose model + CRUD APIs with ownership, replace `mockProjectService`. |
 | **Milestone 3** | Judge0 execution engine with allowlisting & rate limits | **Not Started** | Language configs and Judge0 IDs exist in `@devnest/shared`. Backend execution router (`/api/execute`), Judge0 client, polling mechanism, and rate limiting to be implemented. |
 | **Milestone 4** | Execution console & telemetry | **Not Started** | Telemetry contracts exist in `@devnest/shared`. Real telemetry display (execution time, memory consumption, exit codes, stdout/stderr streams) to replace mock console. |
 | **Milestone 5** | Automated testing | **Not Started** | Automated test runners (Vitest/Jest, Supertest, React Testing Library) to be configured across monorepo packages. |
@@ -192,8 +196,8 @@ DevNest/
   - Show/hide password visibility toggle buttons.
   - "Auto Fill" quick demo button for one-click access using `demo@devnest.io` / `password123`.
   - Client route protection: unauthenticated users cannot access dashboard or workspace; authenticated users are automatically redirected to dashboard from login/sign-up.
-  - Non-sensitive mock session persistence in `localStorage` across page refreshes.
-  - Clear in-app disclaimer indicating client-side demonstration authentication.
+  - Real backend auth via `authApi` (HTTP-only JWT cookie; session restore through `GET /api/auth/me`).
+  - Dashboard/workspace project data still mocked via `mockProjectService` until Milestone 2 CRUD lands.
 - **Project Dashboard:**
   - Welcome banner personalizing the view with the active mock user's name (`Alex Chen`).
   - Real-time search filter querying projects by title, language, or description.
@@ -273,12 +277,17 @@ VITE_API_URL=http://localhost:5000
 ```env
 PORT=5000
 NODE_ENV=development
+CLIENT_ORIGIN=http://localhost:5173
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/devnest?retryWrites=true&w=majority
+JWT_SECRET=your_jwt_secret_key_minimum_32_characters_long
 ```
 
 #### Client (`client/.env.example`)
 ```env
 VITE_API_URL=http://localhost:5000
 ```
+
+> **Secrets:** Real `MONGODB_URI` / `JWT_SECRET` live only in local `server/.env` (gitignored). Never commit `.env` or paste credentials into docs/chat.
 
 ### Installation & Execution Commands
 
@@ -307,56 +316,45 @@ npm.cmd test
 
 ## 8. Testing and Verification
 
-All checks recorded below were physically executed on the machine on October 22, 2026.
+All checks recorded below were physically executed on the machine on October 23, 2026 (after DNS fix).
 
 | Command / Check | Execution Context | Result | Observations / Output |
 |---|---|---|---|
-| `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Strict typecheck passed across `@devnest/shared`, `@devnest/server`, and `@devnest/client` with 0 errors. |
-| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Full monorepo production build succeeded. `@devnest/client` bundled 1,987 modules in 2.09s (`dist/assets/index-BqIh1RdY.js`: 256.79 kB, gzip: 73.49 kB). |
-| `npm.cmd run dev:client` | `client/` | **Passed** | Vite dev server started in 261ms on `http://localhost:5173/`. |
-| `Invoke-WebRequest http://localhost:5173/` | PowerShell | **Passed (HTTP 200)** | Server verified actively serving the frontend HTML bundle. |
-| Browser Subagent Verification | Antigravity IDE | **Tool Limitation** | Browser subagent reported Playwright driver download 404 in offline sandbox environment. Code, builds, and HTTP responses verified via command line. |
-| `npm.cmd test` | DevNest Root | **Passed (Exit code 0)** | Stub check output: `"Testing will be configured in Milestone 5"`. |
+| Node DNS diagnosis | PowerShell / Node | **Root cause confirmed** | `dns.getServers()` → `['127.0.0.1']`; `resolveSrv` → `ECONNREFUSED`. Public DNS (`8.8.8.8` / `1.1.1.1`) and Wi-Fi DNS succeed. Node `v24.14.0` + c-ares `1.34.6` Windows regression ([nodejs/node#62748](https://github.com/nodejs/node/issues/62748)). |
+| `npm.cmd run dev:server` | `server/` | **Passed** | Conditional DNS fallback logged; MongoDB Atlas connected to database `devnest`; server on `:5000`. |
+| `GET /api/health` | PowerShell | **Passed (HTTP 200)** | `{"status":"ok","service":"devnest-server",...}`. |
+| `npm.cmd run dev:client` | `client/` | **Passed** | Vite ready in ~264ms on `http://localhost:5173/`. |
+| `Invoke-WebRequest http://localhost:5173/` | PowerShell | **Passed (HTTP 200)** | Frontend HTML served. |
+| `npm.cmd run test` (server Vitest) | `server/` | **Passed (26/26)** | `auth.service.test.ts` (12) + `auth.routes.test.ts` (14). |
+| `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Shared, server, client — 0 errors. |
+| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Client bundle ~255.79 kB JS (gzip 73.02 kB). |
 
 ---
 
 ## 9. Known Issues and Technical Debt
 
-1. **Client-Side Mock Authentication:** Authentication is currently simulated via `mockAuthService` with `localStorage` session markers. Real user credentials, password hashing (`bcrypt`), and JWT tokens will be introduced in Milestone 2.
-2. **In-Memory Project Persistence:** Projects and files are stored in `localStorage` and memory. Real MongoDB Atlas persistence is scheduled for Milestone 2.
-3. **Remote Code Execution Pending:** The Run button and Output console display Milestone 1 simulation notices. Real remote compilation via Judge0 API is scheduled for Milestone 3.
-4. **Offline Playwright Driver Download:** In this sandboxed environment, automated browser tools running Playwright cannot reach external CDN endpoints for driver binaries. Local HTTP endpoints and TypeScript build outputs serve as empirical verification.
-5. **Windows PowerShell Execution Policy:** Running bare `npm` in PowerShell fails due to `npm.ps1` script signing policies. Users must invoke `npm.cmd`.
+1. **Node.js Windows DNS / `querySrv ECONNREFUSED` (mitigated in code):** On Node `v24.14.0` (c-ares `1.34.6`), `dns.getServers()` incorrectly returns `127.0.0.1`, breaking `mongodb+srv` SRV lookups. Mitigated by `server/src/config/dns.ts` (loopback-only → public DNS fallback). **Preferred long-term fix:** upgrade Node.js to **>= 24.19.0** (includes c-ares fix). Optional OS step: set Wi-Fi DNS to `1.1.1.1` / `8.8.8.8` via Settings → Network → Wi-Fi → DNS — helpful for other tools, but not required once Node is upgraded or the app fallback is present.
+2. **In-Memory Project Persistence:** Dashboard/workspace still use `mockProjectService` + `localStorage`. Project Mongoose model and ownership-guarded CRUD remain for Milestone 2 completion.
+3. **Remote Code Execution Pending:** Run button / Output panel still show Milestone 3 placeholders for Judge0.
+4. **Legacy `mockAuthService`:** File remains in the repo but `AuthContext` uses `authApi` against the real backend.
+5. **Windows PowerShell Execution Policy:** Use `npm.cmd` instead of bare `npm` when `npm.ps1` is blocked.
 
 ---
 
 ## 10. Next Steps
 
 ### Highest Priority Task
-**Milestone 2: MongoDB, Authentication, Validation, and Project Ownership Security**
+**Finish Milestone 2: Project persistence + ownership-guarded CRUD** (auth + MongoDB connection already verified).
 
 ### Step-by-Step Action Plan
-1. **Configure Backend Dependencies:**
-   - In `server/`: Install `mongoose`, `jsonwebtoken`, `bcryptjs`, and `zod` for request validation.
-   - Install corresponding TypeScript declaration packages (`@types/jsonwebtoken`, `@types/bcryptjs`).
-2. **Setup MongoDB Atlas Connection:**
-   - Create `server/src/config/db.ts` to manage the Mongoose connection lifecycle.
-   - Add `MONGODB_URI` to `server/.env.example`.
-3. **Define Mongoose Data Models:**
-   - Create `server/src/models/User.ts` (email, password hash, name, timestamps).
-   - Create `server/src/models/Project.ts` (title, description, language, ownerId reference, files subdocument array).
-4. **Implement Backend Authentication Endpoints:**
-   - `POST /api/auth/register`: Validate body with Zod, hash password with bcrypt, create user, return JWT token.
-   - `POST /api/auth/login`: Verify credentials, return JWT token and user profile.
-   - `GET /api/auth/me`: Authenticated endpoint returning current user profile from token.
-5. **Implement Project CRUD Endpoints with Ownership Protection:**
-   - Create auth middleware `server/src/middleware/auth.ts` to verify JWT and attach `req.user`.
-   - `GET /api/projects`: List projects owned by `req.user.id`.
-   - `POST /api/projects`: Create project linked to `req.user.id`.
-   - `GET /api/projects/:id`, `PUT /api/projects/:id`, `DELETE /api/projects/:id`: Guard with ownership validation (`project.ownerId === req.user.id`).
-6. **Connect Client to Backend APIs:**
-   - Replace `mockAuthService` with HTTP calls to `/api/auth`.
-   - Replace `mockProjectService` with HTTP calls to `/api/projects`.
+1. **Optional environment hardening:** Upgrade Node.js to `>= 24.19.0` so the Windows c-ares DNS bug is fixed at the runtime layer (code fallback can remain as defense-in-depth).
+2. **Define Project model:** `server/src/models/Project.ts` (title, description, language, ownerId, files tree, timestamps).
+3. **Implement Project CRUD with ownership:**
+   - Routes under `/api/projects` protected by `requireAuth`.
+   - List / create / get / update / delete scoped to `req.user.id`.
+   - Zod validators for create/update payloads.
+4. **Wire client:** Replace `mockProjectService` usage in Dashboard + Workspace with a real `projectApi` (`credentials: 'include'`).
+5. **Add project route/service tests** alongside existing auth Vitest suite.
 
 ---
 
@@ -366,25 +364,21 @@ All checks recorded below were physically executed on the machine on October 22,
 ### Future AI Session Handoff
 
 - **Project:** DevNest — Replit-inspired browser Cloud IDE (College Resume Project).
-- **Current Milestone:** Milestone 2 (MongoDB, Authentication, Validation, and Project Ownership Security).
-- **Completed Milestones:**
-  - Milestone 0: Workspace & monorepo scaffolding (npm workspaces, TS build, Express baseline, React baseline).
-  - Milestone 1: Complete interactive UI prototype (Login/Signup with validation, Project Dashboard with search/CRUD, full IDE workspace with Explorer tree, Monaco Editor with multi-tabs & dirty tracking, Bottom Panel with Output/Problems/Terminal, live status bar, and Run modal).
-- **Important Files to Inspect First:**
-  - `client/src/services/mockAuthService.ts` (To be swapped with real auth API in Milestone 2)
-  - `client/src/services/mockProjectService.ts` (To be swapped with real project API in Milestone 2)
-  - `server/src/server.ts` (To be expanded with MongoDB connection, auth routes, and project routes)
-  - `shared/src/types/project.ts` (Data contracts to align with Mongoose schemas)
-- **Recent Architectural Decisions:**
-  - `mockAuthService` and `mockProjectService` use Promise-based interfaces that mirror future REST endpoints.
-  - `@monaco-editor/react` (4.7.0) and `lucide-react` (1.61.0) installed and verified in production bundle.
-  - Strict TypeScript with zero unused locals (`noUnusedLocals: true`).
-- **Immediate Task:**
-  1. Install Mongoose, jsonwebtoken, bcryptjs, and zod in `server`.
-  2. Implement MongoDB connection, User/Project schemas, and authentication endpoints.
-  3. Replace client mock services with real backend integration.
+- **Current Milestone:** Milestone 2 (Auth + MongoDB done; Project CRUD still mock).
+- **Completed / Verified:**
+  - Milestone 0 & 1 complete.
+  - Milestone 2 auth stack: User model, JWT HTTP-only cookies, `/api/auth/*`, Zod, rate limit, client `authApi` + session restore via `/me`.
+  - MongoDB Atlas connection verified after DNS workaround (`server/src/config/dns.ts` + `db.ts`).
+- **Important Files:**
+  - `server/src/config/dns.ts`, `server/src/config/db.ts`, `server/src/server.ts`
+  - `server/src/routes/auth.routes.ts`, `server/src/services/auth.service.ts`, `server/src/models/User.ts`
+  - `client/src/services/authApi.ts`, `client/src/context/AuthContext.tsx`
+  - `client/src/services/mockProjectService.ts` (still active — next swap target)
+- **Immediate Task:** Project Mongoose model + `/api/projects` CRUD with ownership; replace client mock project service.
+- **Runtime note:** Node `v24.14.0` on Windows has c-ares DNS bug; prefer upgrade to `>= 24.19.0`. Do not commit `.env`.
 - **Verification Commands:**
   - `npm.cmd run typecheck`
   - `npm.cmd run build`
+  - `npm.cmd run test`
   - `npm.cmd run dev`
 ```

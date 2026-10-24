@@ -17,7 +17,7 @@
     "build:client": "npm run build --workspace=client",
     "lint": "npm run typecheck",
     "typecheck": "npm run typecheck --workspace=shared && npm run typecheck --workspace=server && npm run typecheck --workspace=client",
-    "test": "echo \"Testing will be configured in Milestone 5\" && exit 0"
+    "test": "npm run test --workspace=server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

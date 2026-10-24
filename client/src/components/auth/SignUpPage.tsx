@@ -97,16 +97,8 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
           <p className="text-sm text-slate-400 mt-1">Start building projects with DevNest Cloud IDE</p>
         </div>
 
-        {/* Global error */}
-        {errorMessage && (
-          <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start space-x-2 text-rose-300 text-xs animate-in fade-in">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-400" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Name field */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5" htmlFor="signup-name">
@@ -262,6 +254,16 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
               </>
             )}
           </button>
+
+          {errorMessage && (
+            <div
+              role="alert"
+              className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start space-x-2 text-rose-300 text-sm"
+            >
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-400" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
         </form>
 
         {/* Footer switch to login */}
@@ -274,13 +276,6 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ onNavigateToLogin }) => 
             >
               Log in
             </button>
-          </p>
-        </div>
-
-        {/* Milestone disclaimer */}
-        <div className="mt-4 text-center">
-          <p className="text-[11px] text-slate-500">
-            Milestone 1 Demo Prototype • Mock session only
           </p>
         </div>
       </div>

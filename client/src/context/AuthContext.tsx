@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginCredentials, SignUpCredentials } from '../types/auth';
-import { mockAuthService } from '../services/mockAuthService';
+import { authApiService } from '../services/authApi';
 
 interface AuthContextType {
   user: User | null;
@@ -17,39 +17,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // On mount: attempt to restore session from the HTTP-only cookie via /api/auth/me
   useEffect(() => {
-    // Check for existing non-sensitive mock session
-    const existing = mockAuthService.getCurrentUser();
-    if (existing) {
-      setUser(existing);
-    }
-    setIsLoading(false);
+    authApiService.getMe().then((existing) => {
+      if (existing) setUser(existing);
+      setIsLoading(false);
+    });
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
-    setIsLoading(true);
-    try {
-      const loggedIn = await mockAuthService.login(credentials);
-      setUser(loggedIn);
-    } finally {
-      setIsLoading(false);
-    }
+    const loggedIn = await authApiService.login(credentials);
+    setUser(loggedIn);
   };
 
   const register = async (credentials: SignUpCredentials): Promise<void> => {
-    setIsLoading(true);
-    try {
-      const registered = await mockAuthService.register(credentials);
-      setUser(registered);
-    } finally {
-      setIsLoading(false);
-    }
+    const registered = await authApiService.register(credentials);
+    setUser(registered);
   };
 
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await mockAuthService.logout();
+      await authApiService.logout();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -79,3 +68,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
