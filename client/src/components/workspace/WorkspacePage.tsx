@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkspaceProject } from '../../types/project';
 import { FileNode, OpenTab, EditorCursorPosition, FileSystemItemType } from '../../types/files';
 import { BottomPanelTab } from '../../types/ide';
-import { SupportedLanguage } from '@devnest/shared';
+import { SupportedLanguage, ExecutionResult, BatchTestResult, TestCaseInput } from '@devnest/shared';
 import {
   findNodeById,
   updateNodeContent,
@@ -51,6 +51,18 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // M5: Execution Telemetry, Stdin & Multi-Test Runner State
+  const [customStdin, setCustomStdin] = useState<string>('');
+  const [testCases, setTestCases] = useState<TestCaseInput[]>([
+    { id: '1', input: 'Hello\n', expectedOutput: 'Hello\n' },
+    { id: '2', input: 'DevNest\n', expectedOutput: 'DevNest\n' },
+  ]);
+  const [latestResult, setLatestResult] = useState<ExecutionResult | null>(null);
+  const [testResults, setTestResults] = useState<BatchTestResult | null>(null);
+  const [isRunningTests, setIsRunningTests] = useState(false);
+  const executionSeqRef = useRef<number>(0);
+
 
   // Load project on mount
   useEffect(() => {
@@ -300,7 +312,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
   // Run button handler — executes code via OnlineCompiler.io backend proxy
   const handleRun = async () => {
-    if (!project || isExecuting) return;
+    if (!project || isExecuting || isRunningTests) return;
 
     setIsBottomPanelOpen(true);
     setBottomTab('output');
@@ -326,6 +338,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
       handleSave();
     }
 
+    const currentSeq = ++executionSeqRef.current;
     setIsExecuting(true);
     const timestamp = new Date().toLocaleTimeString();
     const startMsg = `[${timestamp}] [DevNest Engine] Running ${project.title} (${project.language.toUpperCase()})...`;
@@ -335,8 +348,16 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
       const result = await executionApi.executeCode({
         language: project.language,
         sourceCode: codeToRun,
+        stdin: customStdin,
         projectId: project.id,
       });
+
+      // Discard stale response if a newer execution occurred
+      if (executionSeqRef.current !== currentSeq) {
+        return;
+      }
+
+      setLatestResult(result);
 
       const lines: string[] = [];
 
@@ -367,13 +388,91 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
         onShowToast('Execution Notice', telemetry.statusDescription, 'warning');
       }
     } catch (err: unknown) {
+      if (executionSeqRef.current !== currentSeq) return;
       const message = err instanceof Error ? err.message : 'Execution failed';
       setOutputLogs((prev) => [...prev, `[Error] ${message}`]);
       onShowToast('Execution Error', message, 'error');
     } finally {
-      setIsExecuting(false);
+      if (executionSeqRef.current === currentSeq) {
+        setIsExecuting(false);
+      }
     }
   };
+
+  // Run Tests button handler — executes test suite via OnlineCompiler.io test runner
+  const handleRunTests = async () => {
+    if (!project || isExecuting || isRunningTests) return;
+
+    if (testCases.length === 0) {
+      onShowToast('No Test Cases', 'Please add at least one test case before running tests.', 'warning');
+      return;
+    }
+
+    setIsBottomPanelOpen(true);
+    setBottomTab('tests');
+
+    let codeToRun = activeContent;
+    if (!codeToRun || !activeFileId) {
+      const entryNode =
+        files.find((f) => f.isEntry && f.type === 'file') ||
+        files.find((f) => f.type === 'file');
+      if (entryNode && entryNode.content) {
+        codeToRun = entryNode.content;
+      }
+    }
+
+    if (!codeToRun || !codeToRun.trim()) {
+      onShowToast('Empty Code', 'Please open a file with code before running tests.', 'warning');
+      return;
+    }
+
+    if (activeFileId && isDirty) {
+      handleSave();
+    }
+
+    const currentSeq = ++executionSeqRef.current;
+    setIsRunningTests(true);
+
+    try {
+      const result = await executionApi.runTests({
+        language: project.language,
+        sourceCode: codeToRun,
+        tests: testCases,
+        projectId: project.id,
+      });
+
+      if (executionSeqRef.current !== currentSeq) {
+        return;
+      }
+
+      setTestResults(result);
+
+      if (result.verdict === 'accepted') {
+        onShowToast(
+          'All Tests Passed',
+          `100% score — all ${result.passedCount} test cases passed successfully!`,
+          'success'
+        );
+      } else if (result.verdict === 'compilation_error') {
+        onShowToast('Compilation Error', 'Code failed to compile for the test suite.', 'error');
+      } else {
+        onShowToast(
+          'Tests Completed',
+          `Verdict: ${result.verdict.toUpperCase().replace(/_/g, ' ')} (${result.passedCount}/${result.totalCount} passed)`,
+          'warning'
+        );
+      }
+    } catch (err: unknown) {
+      if (executionSeqRef.current !== currentSeq) return;
+      const message = err instanceof Error ? err.message : 'Test runner failed';
+      onShowToast('Test Runner Error', message, 'error');
+    } finally {
+      if (executionSeqRef.current === currentSeq) {
+        setIsRunningTests(false);
+      }
+    }
+  };
+
 
   if (isLoading || !project) {
     return (
@@ -401,7 +500,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenHelp={() => setIsRunModalOpen(true)}
         isSidebarOpen={isSidebarOpen}
-        isRunning={isExecuting}
+        isRunning={isExecuting || isRunningTests}
       />
 
       {/* Main Workspace Body */}
@@ -437,7 +536,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
             onSaveShortcut={handleSave}
           />
 
-          {/* Bottom Panel (Output, Problems, Terminal) */}
+          {/* Bottom Panel (Execution Console, Stdin, Test Cases, Problems, Terminal) */}
           <BottomPanel
             activeTab={bottomTab}
             onTabChange={setBottomTab}
@@ -445,6 +544,16 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
             onToggleOpen={() => setIsBottomPanelOpen(!isBottomPanelOpen)}
             outputLog={outputLogs}
             onClearOutput={() => setOutputLogs([])}
+            latestResult={latestResult}
+            isExecuting={isExecuting}
+            stdin={customStdin}
+            onStdinChange={setCustomStdin}
+            testCases={testCases}
+            onTestCasesChange={setTestCases}
+            testResults={testResults}
+            isRunningTests={isRunningTests}
+            onRunTests={handleRunTests}
+            onRunCode={handleRun}
           />
         </div>
       </div>

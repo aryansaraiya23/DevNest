@@ -1,4 +1,4 @@
-import { ExecutionRequest, ExecutionResult } from '@devnest/shared';
+import { ExecutionRequest, ExecutionResult, BatchTestRequest, BatchTestResult } from '@devnest/shared';
 
 const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
@@ -41,6 +41,34 @@ export class ExecutionApiService {
 
     return data as ExecutionResult;
   }
+
+  /**
+   * Dispatches multi-test batch evaluation to backend proxy
+   */
+  public async runTests(request: BatchTestRequest): Promise<BatchTestResult> {
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/execute/run-tests`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+    } catch {
+      throw new Error('Unable to reach the DevNest execution server. Please check your connection.');
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(readErrorMessage(data, `Test execution failed with status ${res.status}`));
+    }
+
+    return data as BatchTestResult;
+  }
 }
 
 export const executionApi = new ExecutionApiService();
+

@@ -326,4 +326,264 @@ describe('ExecutionService Unit Tests', () => {
       expect(result.stderr).toContain('malformed response');
     });
   });
+
+  describe('normalizeVerdict', () => {
+    it('correctly maps various verdict formats', () => {
+      expect(service.normalizeVerdict('accepted')).toBe('accepted');
+      expect(service.normalizeVerdict('AC')).toBe('accepted');
+      expect(service.normalizeVerdict('wrong_answer')).toBe('wrong_answer');
+      expect(service.normalizeVerdict('WA')).toBe('wrong_answer');
+      expect(service.normalizeVerdict('time_limit_exceeded')).toBe('time_limit_exceeded');
+      expect(service.normalizeVerdict('TLE')).toBe('time_limit_exceeded');
+      expect(service.normalizeVerdict('memory_limit_exceeded')).toBe('memory_limit_exceeded');
+      expect(service.normalizeVerdict('compilation_error')).toBe('compilation_error');
+      expect(service.normalizeVerdict('CE')).toBe('compilation_error');
+      expect(service.normalizeVerdict('runtime_error')).toBe('runtime_error');
+      expect(service.normalizeVerdict('RE')).toBe('runtime_error');
+      expect(service.normalizeVerdict('unknown_code')).toBe('error');
+    });
+  });
+
+  describe('runTests', () => {
+    it('throws ExecutionConfigError when API key is missing', async () => {
+      const noKeyService = new ExecutionService('', mockBaseUrl);
+      await expect(
+        noKeyService.runTests(
+          {
+            language: 'python',
+            sourceCode: 'print(1)',
+            tests: [{ input: '', expectedOutput: '1\n' }],
+          },
+          'user123'
+        )
+      ).rejects.toThrow(ExecutionConfigError);
+    });
+
+    it('verifies project ownership when projectId is passed', async () => {
+      vi.spyOn(projectService, 'getProjectById').mockRejectedValue(
+        new ProjectNotFoundError('Project not found')
+      );
+
+      await expect(
+        service.runTests(
+          {
+            language: 'python',
+            sourceCode: 'print(1)',
+            projectId: 'invalid_proj',
+            tests: [{ input: '', expectedOutput: '1\n' }],
+          },
+          'user123'
+        )
+      ).rejects.toThrow(ProjectNotFoundError);
+    });
+
+    it('successfully evaluates batch tests via /api/run-tests/', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          verdict: 'accepted',
+          score: 100,
+          passed: 2,
+          total: 2,
+          compile_error: null,
+          tests: [
+            {
+              verdict: 'accepted',
+              output: '4\n',
+              error: '',
+              time: '0.015',
+              memory: '4096',
+              exit_code: 0,
+            },
+            {
+              verdict: 'accepted',
+              output: '9\n',
+              error: '',
+              time: '0.018',
+              memory: '4120',
+              exit_code: 0,
+            },
+          ],
+        }),
+      });
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'n = int(input())\nprint(n * n)',
+          tests: [
+            { input: '2\n', expectedOutput: '4\n' },
+            { input: '3\n', expectedOutput: '9\n' },
+          ],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('accepted');
+      expect(batchResult.passedCount).toBe(2);
+      expect(batchResult.totalCount).toBe(2);
+      expect(batchResult.score).toBe(100);
+      expect(batchResult.telemetry.totalTimeMs).toBe(33); // 15ms + 18ms
+      expect(batchResult.telemetry.peakMemoryKb).toBe(4120);
+      expect(batchResult.tests).toHaveLength(2);
+      expect(batchResult.tests[0].verdict).toBe('accepted');
+      expect(batchResult.tests[0].actualOutput).toBe('4\n');
+    });
+
+    it('handles mixed test verdicts (accepted and wrong_answer)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          verdict: 'wrong_answer',
+          score: 50,
+          passed: 1,
+          total: 2,
+          compile_error: null,
+          tests: [
+            {
+              verdict: 'accepted',
+              output: '4\n',
+              error: '',
+              time: '0.015',
+              memory: '4096',
+              exit_code: 0,
+            },
+            {
+              verdict: 'wrong_answer',
+              output: '6\n',
+              error: '',
+              time: '0.016',
+              memory: '4096',
+              exit_code: 0,
+            },
+          ],
+        }),
+      });
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'print(4)',
+          tests: [
+            { input: '2\n', expectedOutput: '4\n' },
+            { input: '3\n', expectedOutput: '9\n' },
+          ],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('wrong_answer');
+      expect(batchResult.passedCount).toBe(1);
+      expect(batchResult.totalCount).toBe(2);
+      expect(batchResult.tests[1].verdict).toBe('wrong_answer');
+      expect(batchResult.tests[1].actualOutput).toBe('6\n');
+    });
+
+    it('handles compilation errors during batch test execution', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          verdict: 'compilation_error',
+          compile_error: 'SyntaxError: invalid syntax on line 1',
+          passed: 0,
+          total: 1,
+          tests: [],
+        }),
+      });
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'invalid syntax def',
+          tests: [{ input: '', expectedOutput: '' }],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('compilation_error');
+      expect(batchResult.compileOutput).toContain('SyntaxError');
+      expect(batchResult.passedCount).toBe(0);
+    });
+
+    it('gracefully falls back to sequential execution if /api/run-tests/ returns 404', async () => {
+      // First call (/api/run-tests/) returns 404
+      // Subsequent calls (/api/run-code-sync/) succeed
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            output: '10\n',
+            error: '',
+            status: 'success',
+            exit_code: 0,
+            total: '0.025',
+            memory: '5000',
+          }),
+        });
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'print(10)',
+          tests: [{ input: '', expectedOutput: '10\n' }],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('accepted');
+      expect(batchResult.passedCount).toBe(1);
+      expect(batchResult.totalCount).toBe(1);
+      expect(batchResult.tests[0].actualOutput).toBe('10\n');
+    });
+
+    it('handles rate limits (429) from test provider', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        json: async () => ({ error: 'Rate limit exceeded' }),
+      });
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'print(1)',
+          tests: [{ input: '', expectedOutput: '1' }],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('error');
+      expect(batchResult.tests[0].error).toContain('rate limit reached');
+    });
+
+    it('handles test execution timeout', async () => {
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+      global.fetch = vi.fn().mockRejectedValue(abortError);
+
+      const batchResult = await service.runTests(
+        {
+          language: 'python',
+          sourceCode: 'while True: pass',
+          tests: [{ input: '', expectedOutput: '' }],
+        },
+        'user123'
+      );
+
+      expect(batchResult.verdict).toBe('error');
+      expect(batchResult.tests[0].error).toContain('timed out');
+    });
+  });
 });
+

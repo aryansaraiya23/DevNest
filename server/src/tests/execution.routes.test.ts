@@ -298,4 +298,101 @@ describe('POST /api/execute Integration Tests', () => {
       expect(res.body.telemetry.exitCode).toBe(124);
     });
   });
+
+  describe('POST /api/execute/run-tests', () => {
+    it('returns 401 when not authenticated', async () => {
+      const res = await request(app)
+        .post('/api/execute/run-tests')
+        .send({
+          language: 'python',
+          sourceCode: 'print(1)',
+          tests: [{ input: '', expectedOutput: '1\n' }],
+        });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when validation fails (empty tests array)', async () => {
+      const res = await request(app)
+        .post('/api/execute/run-tests')
+        .set('Cookie', authCookie(OWNER_ID))
+        .send({
+          language: 'python',
+          sourceCode: 'print(1)',
+          tests: [],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('At least one test case is required');
+    });
+
+    it('returns 400 when validation fails (invalid language)', async () => {
+      const res = await request(app)
+        .post('/api/execute/run-tests')
+        .set('Cookie', authCookie(OWNER_ID))
+        .send({
+          language: 'ruby',
+          sourceCode: 'puts 1',
+          tests: [{ input: '', expectedOutput: '1' }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Language must be one of');
+    });
+
+    it('returns 200 with batch test result on successful run', async () => {
+      vi.spyOn(executionService, 'runTests').mockResolvedValue({
+        verdict: 'accepted',
+        passedCount: 2,
+        totalCount: 2,
+        score: 100,
+        compileOutput: null,
+        tests: [
+          {
+            testIndex: 1,
+            verdict: 'accepted',
+            input: '1\n',
+            expectedOutput: '1\n',
+            actualOutput: '1\n',
+            timeMs: 20,
+            memoryKb: 4096,
+            exitCode: 0,
+          },
+          {
+            testIndex: 2,
+            verdict: 'accepted',
+            input: '2\n',
+            expectedOutput: '2\n',
+            actualOutput: '2\n',
+            timeMs: 25,
+            memoryKb: 4096,
+            exitCode: 0,
+          },
+        ],
+        telemetry: {
+          totalTimeMs: 45,
+          peakMemoryKb: 4096,
+        },
+      });
+
+      const res = await request(app)
+        .post('/api/execute/run-tests')
+        .set('Cookie', authCookie(OWNER_ID))
+        .send({
+          language: 'python',
+          sourceCode: 'print(input())',
+          tests: [
+            { input: '1\n', expectedOutput: '1\n' },
+            { input: '2\n', expectedOutput: '2\n' },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.verdict).toBe('accepted');
+      expect(res.body.passedCount).toBe(2);
+      expect(res.body.totalCount).toBe(2);
+      expect(res.body.tests).toHaveLength(2);
+    });
+  });
 });
+

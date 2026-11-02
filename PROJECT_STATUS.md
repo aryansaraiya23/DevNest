@@ -79,17 +79,18 @@ The platform enables developers, students, and teams to write code, organize hie
 | **Frontend Styling** | Tailwind CSS & PostCSS | `tailwindcss: ^3.4.10`, `postcss: ^8.4.41`, `autoprefixer: ^10.4.20` | Utility-first styling with custom dark theme palette |
 | **Code Editor** | Monaco Editor | `@monaco-editor/react: ^4.7.0` | In-browser editor with multi-tab support, syntax highlighting, and dirty tracking |
 | **UI Iconography** | Lucide React | `lucide-react: ^1.61.0` | Modern SVG icons across workspace, file tree, and dashboard |
-| **Testing Suite (Server)** | Vitest & Supertest | `vitest: ^2.1.8`, `supertest: ^7.3.1` | 89 unit & route integration tests passing (auth, project, execution services) |
+| **Testing Suite (Server)** | Vitest & Supertest | `vitest: ^2.1.8`, `supertest: ^7.3.1` | 102 unit & route integration tests passing (auth, project, execution services, test runner) |
 | **Code Execution Pipeline** | OnlineCompiler.io | Native REST API (`/api/run-code-sync/`) | Sandboxed remote execution proxied via Express backend (`POST /api/execute`) |
+| **Execution Console & Telemetry** | Custom BottomPanel Console | React, Tailwind, Lucide, `@devnest/shared` | Multi-tab execution console with stdout, stderr, compile error separation, live execution time, peak memory, stdin, and batch test runner (`POST /api/execute/run-tests`) |
 
 ### Planned Technologies (Scheduled for Later Milestones)
 
 | Layer | Planned Technology | Intended Purpose | Target Milestone |
 |---|---|---|---|
-| **Execution Telemetry** | Custom/Monaco Output Console | Display execution time, peak memory, exit codes, and stdout/stderr streams | Milestone 5 |
 | **Live Collaboration** | Yjs, WebSockets | CRDT-based concurrent editing, participant presence, and multi-file document sync | Milestone 8 |
 | **Automated Testing** | Vitest, React Testing Library, Supertest | Full-coverage frontend and backend integration testing | Milestone 6 |
 | **Production Deployment** | Vercel (Client) & Render (Server) | Production cloud hosting, environment configuration, and CI/CD pipelines | Milestone 7 |
+
 
 ---
 
@@ -199,7 +200,7 @@ The development roadmap is organized into sequentially executed milestones:
 | **Milestone 2** | Database Integration & Authentication | **Completed** | MongoDB Atlas connected via Mongoose; `User` model with secure bcrypt password hashing; JWT in HTTP-only cookies; `/api/auth/register`, `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`; Zod auth validators; rate limiting on auth routes; client `authApi` + `AuthContext` session restore on application mount. Auth Vitest suite: 26/26 tests passing. |
 | **Milestone 3** | Project & File Management APIs | **Completed** | `Project` Mongoose model with recursive `FileNode` sub-document schema; `ProjectService` with strict ownership checks preventing Insecure Direct Object References (IDOR); `/api/projects` CRUD endpoints and `/api/projects/:id/files` + `/api/projects/:id/language` routes protected by `requireAuth`; Zod request payload validators; real `projectApiService` client integrated into `DashboardPage` and `WorkspacePage`; pure in-memory tree helpers retained in `mockProjectService.ts`; server Vitest test suite expanded to 63/63 passing tests (37 project unit & route tests). |
 | **Milestone 4** | Code Execution Pipeline | **Completed** | Sandboxed multi-language remote compilation and execution via OnlineCompiler.io. Dedicated backend execution service (`ExecutionService`) and authenticated route `POST /api/execute`; server-side `ONLINECOMPILER_API_KEY` configuration; language allowlisting (`javascript`, `python`, `cpp`, `java`); source code size limits (100KB) and stdin limits (50KB); execution timeout with AbortController (15s ceiling); per-user rate limiting (`executionRateLimiter`, 20 req/min); project ownership verification (IDOR prevention); normalized `ExecutionResult` contract; client `executionApi` integration wiring the Run button with loading spinner, auto-save, and formatted Output panel logs; 26 Vitest tests passing with mocked provider (89/89 tests total across server suite). |
-| **Milestone 5** | Execution Console & Telemetry | **Planned** | Real telemetry integration: streaming stdout and stderr output, recording execution duration, peak memory usage, and exit codes; live display in the collapsible BottomPanel Output tab. |
+| **Milestone 5** | Execution Console & Telemetry | **Completed** | Polished execution console integrated into `BottomPanel` featuring real-time telemetry: execution time (`ms`/`s`), peak memory (`KB`/`MB`), exit code display, and status badges (`success`, `compilation_error`, `runtime_error`, `time_limit_exceeded`, `memory_limit_exceeded`). Syntax-differentiated standard output, standard error, and compiler error output blocks with copy actions; interactive standard input (`stdin`) tab with persistent state across executions; multi-test case runner supporting input, expected output, verdict comparison (`accepted`, `wrong_answer`, `time_limit_exceeded`, `compilation_error`), and aggregate scores via `POST /api/execute/run-tests` with graceful fallback to sequential execution; race condition protection via execution sequence counter discarding stale responses and duplicate submission locking; server Vitest suite expanded to 102 passing tests (39 execution service & route tests). |
 | **Milestone 8** | Live Collaboration | **Planned** | Real-time multi-user collaborative workspace: shared project editing powered by Monaco Editor, Yjs (CRDT synchronization engine), and WebSockets. Phased delivery starting with single-file synchronization and expanding to multiple files within a shared project. Features include participant presence (cursors, user colors), a shared synchronized file explorer, stable file IDs with a separate collaborative document per file, room authorization, automatic reconnection handling, and document persistence to MongoDB. |
 | **Milestone 6** | Testing & Security | **Planned** | Comprehensive monorepo test coverage: expanding unit, integration, and UI testing across packages (Vitest, Supertest, React Testing Library); security validation, CSRF verification, rate-limit stress tests, and sanitization checks. |
 | **Milestone 7** | Production Readiness & Deployment | **Planned** | Production build optimization, containerization/PaaS deployment on Vercel (Client SPA) and Render (Backend API Service), automated CI/CD pipeline triggers, and production environment secret configuration. |
@@ -241,28 +242,31 @@ The development roadmap is organized into sequentially executed milestones:
   - Dirty-close confirmation dialog preventing accidental loss of unsaved edits.
   - `Ctrl+S` / `Cmd+S` keyboard shortcut and toolbar Save button to persist file changes to MongoDB.
   - Empty state when all editor tabs are closed.
-- **Collapsible Bottom Panel (Updated - M1 & M4):**
-  - Three distinct tabs: **Output**, **Problems**, and **Terminal**.
-  - Collapsible and expandable with height toggle control.
-  - **Output:** Real-time execution log rendering stdout, formatted compile/runtime errors, and execution metrics (`[Finished in ... | Memory: ... | Exit Code: ... | Status: ...]`).
-  - **Problems:** Clean empty state ("No problems detected in the workspace").
-  - **Terminal:** Container terminal interface placeholder with disclaimer that shell execution arrives in subsequent phases.
+- **Collapsible Execution Console & Telemetry (Completed - M1, M4 & M5):**
+  - Multi-tab bottom panel: **Output**, **Input (stdin)**, **Test Cases**, **Problems**, and **Terminal**.
+  - Collapsible and expandable with height toggle control (`h-52` / `h-80`).
+  - **Output Stream & Telemetry:** Real-time telemetry banner showing execution duration (ms/s), memory usage (KB/MB), exit codes, and colored verdict badges; separate structured code blocks for Standard Output, Standard Error, and Compiler Errors with copy-to-clipboard actions; live loading spinner and execution state.
+  - **Standard Input (`stdin`):** Persistent custom stdin textarea allowing input feeding on Run, line and character counters, and "Run with Stdin" quick action.
+  - **Multi-Test Case Suite:** Interactive test case manager (add/remove up to 10 cases), inputs, expected outputs, and actual output inspection.
+  - **Problems Tab:** Displays compilation problems and syntax errors with quick error diagnostics.
+  - **Terminal Tab:** Isolated container terminal placeholder with scheduled milestone notice.
 - **Real-Time Status Bar (Completed - M1):**
   - Live cursor metrics (`Ln <line>, Col <col>`) updating directly from Monaco's `onDidChangeCursorPosition` event.
   - Current file language indicator, indentation setting (`Spaces: 4`), and encoding (`UTF-8`).
   - Active file status indicator ("Modified" vs "Ready").
 - **Top Toolbar & Run Action (Completed - M1 & M4):**
   - Project title, language selector dropdown, Save button, and Explorer sidebar toggle.
-  - **Run Button:** Fully connected to `/api/execute` endpoint; displays live spinning loader and "Running..." state while execution is in progress, automatically persists dirty files, and appends output to the Output console.
-- **Code Execution Pipeline (Completed - M4):**
-  - Authenticated backend execution route `POST /api/execute` protected by `requireAuth` and `executionRateLimiter` (20 req/min per user).
-  - Dedicated `ExecutionService` proxying execution requests to OnlineCompiler.io `POST /api/run-code-sync/` with server-side `ONLINECOMPILER_API_KEY`.
+  - **Run Button:** Fully connected to `/api/execute` endpoint; displays live spinning loader and "Running..." state while execution is in progress, automatically persists dirty files, and appends output to the Output console. Duplicate submissions and stale response overwrites are prevented.
+- **Code Execution Pipeline & Test Runner Backend (Completed - M4 & M5):**
+  - Authenticated backend execution routes `POST /api/execute` and `POST /api/execute/run-tests` protected by `requireAuth` and `executionRateLimiter` (20 req/min per user).
+  - Dedicated `ExecutionService` proxying execution requests to OnlineCompiler.io `POST /api/run-code-sync/` and `POST /api/run-tests/` with server-side `ONLINECOMPILER_API_KEY`.
+  - Automatic fallback from `/api/run-tests/` to sequential `/api/run-code-sync/` execution if the batch test endpoint is unavailable on the provider plan.
   - Language allowlisting supporting JavaScript (`nodejs-24`), Python (`python-3.14`), C++ (`g++-15`), and Java (`openjdk-25`).
-  - Strict input validation via Zod: source code limit of 100KB, standard input limit of 50KB.
-  - Execution request timeout ceiling using AbortController (15 seconds).
+  - Strict input validation via Zod: source code limit of 100KB, standard input limit of 50KB, batch test limit of 10 cases.
+  - Execution request timeout ceiling using AbortController (15s single, 25s batch).
   - Project ownership verification preventing unauthorized access to other users' project resources (IDOR protection).
-  - Normalization of provider responses into standard `ExecutionResult` contract with telemetry (`timeMs`, `memoryKb`, `exitCode`, `status`, `statusDescription`).
-  - Frontend client `executionApi` service wired into `WorkspacePage` with toast notifications and formatted terminal output.
+  - Normalization of provider responses into standard `ExecutionResult` and `BatchTestResult` contracts with telemetry (`timeMs`, `memoryKb`, `exitCode`, `status`, `statusDescription`).
+  - Frontend client `executionApi` service wired into `WorkspacePage` with toast notifications, sequence guards, and formatted console output.
 
 ---
 
@@ -327,7 +331,7 @@ JWT_SECRET=your_jwt_secret_key_minimum_32_characters_long
 VITE_API_URL=http://localhost:5000
 ```
 
-> **Security Warning:** Real `MONGODB_URI`, `JWT_SECRET`, and future `ONLINECOMPILER_API_KEY` credentials live exclusively in local `server/.env` (gitignored). Never commit `.env` or paste credentials into documentation or chat.
+> **Security Warning:** Real `MONGODB_URI`, `JWT_SECRET`, and `ONLINECOMPILER_API_KEY` credentials live exclusively in local `server/.env` (gitignored). Never commit `.env` or paste credentials into documentation or chat.
 
 ### Installation & Execution Commands
 
@@ -365,9 +369,10 @@ All checks recorded below were physically executed on the development machine on
 | `GET /api/health` | PowerShell | **Passed (HTTP 200)** | `{"status":"ok","service":"devnest-server",...}`. |
 | `npm.cmd run dev:client` | `client/` | **Passed** | Vite ready in ~264ms on `http://localhost:5173/`. |
 | `Invoke-WebRequest http://localhost:5173/` | PowerShell | **Passed (HTTP 200)** | Frontend HTML served. |
-| `npm.cmd run test` (server Vitest) | `server/` | **Passed (89/89)** | `auth.service.test.ts` (12) + `auth.routes.test.ts` (14) + `project.service.test.ts` (14) + `project.routes.test.ts` (23) + `execution.service.test.ts` (15) + `execution.routes.test.ts` (11). |
+| `npm.cmd run test` (server Vitest) | `server/` | **Passed (102/102)** | `auth.service.test.ts` (12) + `auth.routes.test.ts` (14) + `project.service.test.ts` (14) + `project.routes.test.ts` (23) + `execution.service.test.ts` (24) + `execution.routes.test.ts` (15). |
 | `npm.cmd run typecheck` | DevNest Root | **Passed (Exit code 0)** | Shared, server, client — 0 errors. |
-| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Client bundle ~259.82 kB JS (gzip 74.30 kB). |
+| `npm.cmd run build` | DevNest Root | **Passed (Exit code 0)** | Client bundle ~279.83 kB JS (gzip 78.22 kB). |
+
 
 ---
 
@@ -376,20 +381,23 @@ All checks recorded below were physically executed on the development machine on
 1. **Node.js Windows DNS / `querySrv ECONNREFUSED` (mitigated in code):** On Node `v24.14.0` (c-ares `1.34.6`), `dns.getServers()` incorrectly returns `127.0.0.1`, breaking `mongodb+srv` SRV lookups. Mitigated by `server/src/config/dns.ts` (loopback-only → public DNS fallback). **Preferred long-term fix:** upgrade Node.js to **>= 24.19.0** (includes c-ares fix).
 2. **In-Memory Project Persistence:** ~~Dashboard/workspace still use `mockProjectService` + `localStorage`.~~ **Resolved in Milestone 3** — projects and file trees are now persisted in MongoDB via `/api/projects`.
 3. **Remote Code Execution Pending:** ~~Run button / Output panel still show Milestone 4 placeholders for OnlineCompiler.io.~~ **Resolved in Milestone 4** — `POST /api/execute` proxy service with OnlineCompiler.io, Run button loading states, and output display are fully connected and verified.
-4. **Legacy `mockAuthService`:** File remains in the repo for fallback reference, but `AuthContext` uses `authApi` against the real backend.
-5. **Windows PowerShell Execution Policy:** Use `npm.cmd` instead of bare `npm` when `npm.ps1` is blocked.
+4. **Execution Console & Multi-Test Runner:** ~~Basic output panel without structured telemetry, stdin, or multi-test evaluation.~~ **Resolved in Milestone 5** — `BottomPanel` now features comprehensive telemetry cards, stdin persistence, and multi-test case runner (`POST /api/execute/run-tests`).
+5. **Legacy `mockAuthService`:** File remains in the repo for fallback reference, but `AuthContext` uses `authApi` against the real backend.
+6. **Windows PowerShell Execution Policy:** Use `npm.cmd` instead of bare `npm` when `npm.ps1` is blocked.
 
 ---
 
 ## 10. Next Steps
 
 ### Highest Priority Task
-**Implement Milestone 5: Execution Console & Telemetry** (M0, M1, M2, M3 & M4 are fully completed and verified).
+**Implement Milestone 8: Live Collaboration** (M0, M1, M2, M3, M4 & M5 are fully completed and verified).
 
 ### Step-by-Step Action Plan
-1. **Rich telemetry metrics presentation:** Upgrade bottom panel to display live CPU time gauges, memory peak consumption indicators, and structured error diagnostics alongside stdout.
-2. **Standard input (stdin) interactive prompt:** Add dedicated interactive stdin console or input drawer in the bottom panel to pass custom input data into execution requests.
-3. **Live Collaboration Preparation (Milestone 8):** Design WebSocket gateway and integrate Yjs document bindings for Monaco Editor.
+1. **WebSocket Gateway Setup:** Configure WebSocket server in Express backend to handle real-time room connections.
+2. **Yjs CRDT Document Synchronization:** Integrate Yjs document synchronization with Monaco Editor for live multi-user editing.
+3. **Presence & Awareness:** Implement collaborator presence indicators, cursor tracking, and active participant badges.
+4. **Per-File Collaborative Documents:** Isolate documents per stable file ID within shared project workspaces.
+5. **MongoDB Document Flush:** Debounced persistence of collaborative snapshots into MongoDB Atlas `Project` records.
 
 ---
 
@@ -399,33 +407,32 @@ All checks recorded below were physically executed on the development machine on
 ### Future AI Session Handoff
 
 - **Project:** DevNest — Collaborative Code Execution & Testing Platform.
-- **Current Milestone:** Milestone 4 complete → Milestone 5 (Execution Console & Telemetry) next.
+- **Current Milestone:** Milestone 5 complete → Milestone 8 (Live Collaboration) next.
 - **Roadmap Sequence:**
   - M0: Monorepo Scaffolding (Completed)
   - M1: Frontend UI Prototype (Completed)
   - M2: Database Integration & Authentication (Completed)
   - M3: Project & File Management APIs (Completed)
   - M4: Code Execution Pipeline (Completed)
-  - M5: Execution Console & Telemetry (Next)
-  - M8: Live Collaboration (Planned - Yjs & WebSockets)
+  - M5: Execution Console & Telemetry (Completed)
+  - M8: Live Collaboration (Next - Yjs & WebSockets)
   - M6: Testing & Security (Planned)
   - M7: Production Readiness & Deployment (Planned)
 - **Completed / Verified:**
-  - Milestones 0, 1, 2, 3 & 4 complete.
-  - Milestone 4: Dedicated `ExecutionService`, authenticated `POST /api/execute` route with per-user rate limiting, Zod validation, OnlineCompiler.io sandboxing proxy, AbortController timeouts, project IDOR checks, normalized `ExecutionResult` contract, client `executionApi` with Run button loading state & output panel rendering. 89/89 Vitest tests passing.
+  - Milestones 0, 1, 2, 3, 4 & 5 complete.
+  - Milestone 5: Polished execution console in `BottomPanel` with telemetry cards (duration in ms/s, peak memory in KB/MB, exit status, verdict pills), syntax-separated output blocks with copy buttons, standard input (`stdin`) tab with persistent state across executions, multi-case test runner (`POST /api/execute/run-tests` with automatic fallback to sequential execution), race condition protection via sequence counter, 102/102 Vitest tests passing.
 - **Important Files:**
-  - `server/src/services/execution.service.ts` — OnlineCompiler.io proxy & response normalizer
-  - `server/src/controllers/execution.controller.ts` — HTTP layer for /api/execute
-  - `server/src/routes/execution.routes.ts` — /api/execute route with requireAuth & executionRateLimiter
-  - `server/src/validators/execution.validator.ts` — Zod schemas for execution requests
-  - `server/src/middleware/executionRateLimiter.ts` — 20 req/min per-user rate limiter
-  - `server/src/tests/execution.service.test.ts` — 15 unit tests
-  - `server/src/tests/execution.routes.test.ts` — 11 route integration tests
-  - `client/src/services/executionApi.ts` — client API service for /api/execute
-  - `client/src/components/workspace/WorkspacePage.tsx` — wired Run handler & output logging
-  - `client/src/components/workspace/TopToolbar.tsx` — Run button with loading spinner & disabled state
-  - `client/src/components/workspace/BottomPanel.tsx` — Output panel rendering stdout, stderr, telemetry
-- **Immediate Task:** Milestone 5 — enhanced execution console telemetry and interactive stdin support.
+  - `server/src/services/execution.service.ts` — OnlineCompiler.io proxy, runTests batch runner & sequential fallback
+  - `server/src/controllers/execution.controller.ts` — HTTP layer for /api/execute and /api/execute/run-tests
+  - `server/src/routes/execution.routes.ts` — Execution routes with requireAuth & executionRateLimiter
+  - `server/src/validators/execution.validator.ts` — Zod schemas for execute and runBatchTests
+  - `server/src/tests/execution.service.test.ts` — 24 unit tests
+  - `server/src/tests/execution.routes.test.ts` | 15 route integration tests
+  - `client/src/services/executionApi.ts` — Client HTTP service for executeCode and runTests
+  - `client/src/components/workspace/WorkspacePage.tsx` — Workspace coordinator with stale response protection
+  - `client/src/components/workspace/BottomPanel.tsx` — Execution console, stdin textarea & test case suite
+  - `shared/src/types/execution.ts` — Domain contracts for telemetry, test cases, and batch test results
+- **Immediate Task:** Milestone 8 — Live Collaboration with Yjs and WebSockets.
 - **Runtime note:** Node `v24.14.0` on Windows has c-ares DNS bug; prefer upgrade to `>= 24.19.0`. Do not commit `.env`.
 - **Verification Commands:**
   - `npm.cmd run typecheck`
@@ -433,3 +440,4 @@ All checks recorded below were physically executed on the development machine on
   - `npm.cmd run test`
   - `npm.cmd run dev`
 ```
+

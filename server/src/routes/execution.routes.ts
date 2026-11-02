@@ -12,4 +12,8 @@ router.use(executionRateLimiter);
 // POST /api/execute
 router.post('/', (req, res) => executionController.execute(req, res));
 
+// POST /api/execute/run-tests
+router.post('/run-tests', (req, res) => executionController.runTests(req, res));
+
 export default router;
+

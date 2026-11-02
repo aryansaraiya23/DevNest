@@ -31,3 +31,52 @@ export interface ExecutionResult {
   compileOutput: string | null;
   telemetry: ExecutionTelemetry;
 }
+
+export type TestVerdict =
+  | 'accepted'
+  | 'wrong_answer'
+  | 'time_limit_exceeded'
+  | 'runtime_error'
+  | 'compilation_error'
+  | 'memory_limit_exceeded'
+  | 'error';
+
+export interface TestCaseInput {
+  id?: string;
+  input: string;
+  expectedOutput?: string;
+}
+
+export interface TestCaseResult {
+  id?: string;
+  testIndex: number;
+  verdict: TestVerdict;
+  input: string;
+  expectedOutput?: string;
+  actualOutput?: string;
+  error?: string;
+  timeMs: number | null;
+  memoryKb: number | null;
+  exitCode: number | null;
+}
+
+export interface BatchTestRequest {
+  language: SupportedLanguage;
+  sourceCode: string;
+  tests: TestCaseInput[];
+  projectId?: string;
+}
+
+export interface BatchTestResult {
+  verdict: TestVerdict;
+  passedCount: number;
+  totalCount: number;
+  score?: number;
+  compileOutput?: string | null;
+  tests: TestCaseResult[];
+  telemetry: {
+    totalTimeMs: number | null;
+    peakMemoryKb: number | null;
+  };
+}
+
