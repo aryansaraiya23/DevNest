@@ -22,6 +22,7 @@ interface TopToolbarProps {
   onToggleSidebar: () => void;
   onOpenHelp: () => void;
   isSidebarOpen: boolean;
+  isRunning?: boolean;
 }
 
 export const TopToolbar: React.FC<TopToolbarProps> = ({
@@ -35,6 +36,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onToggleSidebar,
   onOpenHelp,
   isSidebarOpen,
+  isRunning = false,
 }) => {
   return (
     <header className="h-12 border-b border-slate-800 bg-slate-950 px-3 flex items-center justify-between select-none z-20">
@@ -77,11 +79,28 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
         {/* Run button */}
         <button
           onClick={onRun}
-          className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-brand-500 hover:bg-brand-600 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-all transform active:scale-95"
-          title="Run project code"
+          disabled={isRunning}
+          className={`flex items-center space-x-1.5 px-3.5 py-1.5 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-all ${
+            isRunning
+              ? 'bg-brand-400/80 cursor-not-allowed opacity-90'
+              : 'bg-brand-500 hover:bg-brand-600 transform active:scale-95'
+          }`}
+          title={isRunning ? 'Executing program in sandbox...' : 'Run project code'}
         >
-          <Play className="w-3.5 h-3.5 fill-slate-950" />
-          <span>Run</span>
+          {isRunning ? (
+            <>
+              <svg className="animate-spin -ml-0.5 mr-1 h-3.5 w-3.5 text-slate-950" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <span>Running...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 fill-slate-950" />
+              <span>Run</span>
+            </>
+          )}
         </button>
 
         {/* Save button and indicator */}

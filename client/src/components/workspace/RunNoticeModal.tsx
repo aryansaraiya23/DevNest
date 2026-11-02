@@ -46,13 +46,13 @@ export const RunNoticeModal: React.FC<RunNoticeModalProps> = ({
           <div className="flex items-start space-x-2">
             <Sparkles className="w-4 h-4 text-brand-400 mt-0.5 shrink-0" />
             <span>
-              In this Milestone 1 prototype, full in-browser Monaco editing, multi-file tree management, and tab switching are completely interactive.
+              DevNest Cloud IDE features Monaco code editing, recursive multi-file management, and real-time tabs.
             </span>
           </div>
           <div className="flex items-start space-x-2">
             <ShieldCheck className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
             <span>
-              Real remote sandboxed execution with <strong className="text-slate-200">Judge0 API</strong>, CPU/memory telemetry, and live stdout streams will be connected in <strong>Milestone 3</strong>.
+              Code execution is securely proxied through the DevNest backend to isolated sandboxes on <strong className="text-slate-200">OnlineCompiler.io</strong> with runtime telemetry and output streaming.
             </span>
           </div>
         </div>

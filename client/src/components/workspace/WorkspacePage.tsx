@@ -13,6 +13,7 @@ import {
   detectMonacoLanguage,
 } from '../../services/mockProjectService';
 import { projectApiService } from '../../services/projectApi';
+import { executionApi } from '../../services/executionApi';
 import { TopToolbar } from './TopToolbar';
 import { Sidebar } from './Sidebar';
 import { EditorTabs } from './EditorTabs';
@@ -49,6 +50,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   const [outputLogs, setOutputLogs] = useState<string[]>([]);
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExecuting, setIsExecuting] = useState(false);
 
   // Load project on mount
   useEffect(() => {
@@ -296,17 +298,81 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
     onShowToast('Language Updated', `Project environment set to ${lang.toUpperCase()}.`, 'info');
   };
 
-  // Run button handler
-  const handleRun = () => {
+  // Run button handler — executes code via OnlineCompiler.io backend proxy
+  const handleRun = async () => {
+    if (!project || isExecuting) return;
+
     setIsBottomPanelOpen(true);
     setBottomTab('output');
-    setIsRunModalOpen(true);
 
+    // Get source code to run: prioritize active file content or project entry file
+    let codeToRun = activeContent;
+    if (!codeToRun || !activeFileId) {
+      const entryNode =
+        files.find((f) => f.isEntry && f.type === 'file') ||
+        files.find((f) => f.type === 'file');
+      if (entryNode && entryNode.content) {
+        codeToRun = entryNode.content;
+      }
+    }
+
+    if (!codeToRun || !codeToRun.trim()) {
+      onShowToast('Empty Code', 'Please open a file with code before running.', 'warning');
+      return;
+    }
+
+    // Auto-save active file if dirty so persistence stays in sync
+    if (activeFileId && isDirty) {
+      handleSave();
+    }
+
+    setIsExecuting(true);
     const timestamp = new Date().toLocaleTimeString();
-    const entry = `[${timestamp}] [DevNest Engine] Run requested for project "${project?.title}" (${project?.language.toUpperCase()})`;
-    const notice = `[${timestamp}] [DevNest Engine] Code execution backend (Judge0) will be active in Milestone 4.`;
+    const startMsg = `[${timestamp}] [DevNest Engine] Running ${project.title} (${project.language.toUpperCase()})...`;
+    setOutputLogs((prev) => [...prev, startMsg]);
 
-    setOutputLogs((prev) => [...prev, entry, notice]);
+    try {
+      const result = await executionApi.executeCode({
+        language: project.language,
+        sourceCode: codeToRun,
+        projectId: project.id,
+      });
+
+      const lines: string[] = [];
+
+      if (result.stdout) {
+        lines.push(result.stdout);
+      }
+
+      if (result.compileOutput) {
+        lines.push(`[Compile Error]\n${result.compileOutput}`);
+      } else if (result.stderr) {
+        lines.push(`[Error]\n${result.stderr}`);
+      }
+
+      const { telemetry } = result;
+      const timeDisplay = telemetry.timeMs != null ? `${telemetry.timeMs}ms` : 'N/A';
+      const memDisplay = telemetry.memoryKb != null ? `${telemetry.memoryKb}KB` : 'N/A';
+      const exitDisplay = telemetry.exitCode != null ? telemetry.exitCode : 'N/A';
+
+      lines.push(
+        `[Finished in ${timeDisplay} | Memory: ${memDisplay} | Exit Code: ${exitDisplay} | Status: ${telemetry.statusDescription}]`
+      );
+
+      setOutputLogs((prev) => [...prev, ...lines]);
+
+      if (telemetry.status === 'success') {
+        onShowToast('Execution Succeeded', `Process finished with exit code ${telemetry.exitCode}.`, 'success');
+      } else {
+        onShowToast('Execution Notice', telemetry.statusDescription, 'warning');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Execution failed';
+      setOutputLogs((prev) => [...prev, `[Error] ${message}`]);
+      onShowToast('Execution Error', message, 'error');
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
   if (isLoading || !project) {
@@ -335,6 +401,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenHelp={() => setIsRunModalOpen(true)}
         isSidebarOpen={isSidebarOpen}
+        isRunning={isExecuting}
       />
 
       {/* Main Workspace Body */}

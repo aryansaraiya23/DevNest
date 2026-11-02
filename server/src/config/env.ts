@@ -12,6 +12,8 @@ export interface EnvironmentConfig {
   CLIENT_ORIGIN: string;
   MONGODB_URI: string;
   JWT_SECRET: string;
+  ONLINECOMPILER_API_KEY: string;
+  ONLINECOMPILER_BASE_URL: string;
 }
 
 export function validateEnvironment(): EnvironmentConfig {
@@ -22,6 +24,9 @@ export function validateEnvironment(): EnvironmentConfig {
   const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
   const MONGODB_URI = process.env.MONGODB_URI?.trim() || '';
   const JWT_SECRET = process.env.JWT_SECRET?.trim() || '';
+  const ONLINECOMPILER_API_KEY = process.env.ONLINECOMPILER_API_KEY?.trim() || '';
+  const ONLINECOMPILER_BASE_URL =
+    process.env.ONLINECOMPILER_BASE_URL?.trim() || 'https://api.onlinecompiler.io';
 
   if (NODE_ENV !== 'test') {
     if (!MONGODB_URI) {
@@ -50,6 +55,8 @@ export function validateEnvironment(): EnvironmentConfig {
     CLIENT_ORIGIN,
     MONGODB_URI,
     JWT_SECRET: JWT_SECRET || 'test_jwt_secret_key_minimum_32_characters_long_for_unit_tests',
+    ONLINECOMPILER_API_KEY,
+    ONLINECOMPILER_BASE_URL,
   };
 }
 

@@ -5,7 +5,8 @@ export interface LanguageConfig {
   name: string;
   extension: string;
   monacoLanguage: string;
-  judge0LanguageId: number;
+  compilerId: string;
+  judge0LanguageId?: number;
   defaultFileName: string;
   boilerplate: string;
 }
@@ -16,7 +17,8 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'JavaScript (Node.js)',
     extension: 'js',
     monacoLanguage: 'javascript',
-    judge0LanguageId: 63, // JavaScript (Node.js 12.14.0 or modern equivalent)
+    compilerId: 'nodejs-24',
+    judge0LanguageId: 63,
     defaultFileName: 'index.js',
     boilerplate: `// DevNest JavaScript Environment\nconsole.log("Hello from DevNest!");\n`,
   },
@@ -25,7 +27,8 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'Python 3',
     extension: 'py',
     monacoLanguage: 'python',
-    judge0LanguageId: 71, // Python (3.8.1 or modern equivalent)
+    compilerId: 'python-3.14',
+    judge0LanguageId: 71,
     defaultFileName: 'main.py',
     boilerplate: `# DevNest Python Environment\nprint("Hello from DevNest!")\n`,
   },
@@ -34,7 +37,8 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'C++ (GCC)',
     extension: 'cpp',
     monacoLanguage: 'cpp',
-    judge0LanguageId: 54, // C++ (GCC 9.2.0)
+    compilerId: 'g++-15',
+    judge0LanguageId: 54,
     defaultFileName: 'main.cpp',
     boilerplate: `#include <iostream>\n\nint main() {\n    std::cout << "Hello from DevNest!" << std::endl;\n    return 0;\n}\n`,
   },
@@ -43,7 +47,8 @@ export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, LanguageConfig> = {
     name: 'Java (OpenJDK)',
     extension: 'java',
     monacoLanguage: 'java',
-    judge0LanguageId: 62, // Java (OpenJDK 13.0.1)
+    compilerId: 'openjdk-25',
+    judge0LanguageId: 62,
     defaultFileName: 'Main.java',
     boilerplate: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from DevNest!");\n    }\n}\n`,
   },

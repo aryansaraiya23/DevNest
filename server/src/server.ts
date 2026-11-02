@@ -6,6 +6,7 @@ import { env } from './config/env';
 import { connectDatabase, setupDatabaseGracefulShutdown } from './config/db';
 import authRoutes from './routes/auth.routes';
 import projectRoutes from './routes/project.routes';
+import executionRoutes from './routes/execution.routes';
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/execute', executionRoutes);
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({

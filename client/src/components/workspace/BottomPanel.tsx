@@ -125,16 +125,15 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1.5 font-sans">
               <div className="flex items-center space-x-2 text-brand-400 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>DevNest Execution Console — Milestone 1 Prototype</span>
+                <span>DevNest Execution Console</span>
               </div>
               <p className="text-slate-400 text-xs leading-relaxed">
-                Live program compilation and execution using the isolated Judge0 backend will be activated in{' '}
-                <strong className="text-slate-200">Milestone 3</strong>.
+                Sandboxed multi-language code execution powered by OnlineCompiler.io via secure DevNest backend proxy.
               </p>
               <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-800/80 flex items-center space-x-2">
                 <Info className="w-3 h-3 text-slate-400" />
                 <span>
-                  Supported languages for remote execution: JavaScript (Node.js), Python 3, C++ (GCC), and Java (OpenJDK).
+                  Supported environments: JavaScript (Node.js 24), Python (3.14), C++ (G++ 15), and Java (OpenJDK 25).
                 </span>
               </div>
             </div>
@@ -149,11 +148,21 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({
                     </button>
                   )}
                 </div>
-                {outputLog.map((line, idx) => (
-                  <div key={idx} className="text-slate-300 py-0.5">
-                    {line}
-                  </div>
-                ))}
+                {outputLog.map((line, idx) => {
+                  const isError = line.startsWith('[Error]') || line.includes('Error:') || line.startsWith('[Compile Error]');
+                  const isTelemetry = line.startsWith('[Finished') || line.startsWith('[DevNest Engine]');
+                  const textColor = isError
+                    ? 'text-red-400'
+                    : isTelemetry
+                    ? 'text-brand-300'
+                    : 'text-slate-200';
+
+                  return (
+                    <div key={idx} className={`${textColor} py-0.5 whitespace-pre-wrap font-mono leading-relaxed`}>
+                      {line}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

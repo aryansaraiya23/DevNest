@@ -70,12 +70,12 @@ DevNest/
 - **Backend:** Node.js, Express, TypeScript (`tsx` in dev, `tsc` for build)
 - **Database & ODM:** MongoDB Atlas, Mongoose 9.x (recursive `FileNode` schema, owner compound indexing)
 - **Security & Auth:** HTTP-only secure JWT cookies, `bcryptjs` password hashing, `express-rate-limit`
-- **Validation:** Zod (auth credentials, project schemas, file trees)
-- **Testing:** Vitest & Supertest (63 passing server unit & integration tests)
+- **Validation:** Zod (auth credentials, project schemas, file trees, execution requests)
+- **Testing:** Vitest & Supertest (89 passing server unit & integration tests)
+- **Code Execution Pipeline (M4):** OnlineCompiler.io API (sandboxed remote compilation and execution proxied exclusively via Express backend; secrets remain server-side)
 
 ### Planned Technologies
 
-- **Code Execution Pipeline (M4):** OnlineCompiler.io API (sandboxed remote compilation and execution proxied exclusively via Express backend; secrets remain server-side)
 - **Execution Console & Telemetry (M5):** Monaco/custom output stream viewer with execution time and memory consumption metrics
 - **Real-Time Collaboration (M8):** Yjs (CRDT synchronization engine), WebSockets (communication server), shared presence, and per-file collaborative documents
 - **Production Hosting (M7):** Vercel (Client SPA) & Render (Backend API Service)
@@ -89,8 +89,8 @@ DevNest/
 | **M0** | Monorepo Scaffolding | **Completed** | npm workspaces, shared library `@devnest/shared`, build & typecheck scripts. |
 | **M1** | Frontend UI Prototype | **Completed** | Interactive dashboard, file tree, Monaco editor, tabs, bottom panel mockups. |
 | **M2** | Database Integration & Authentication | **Completed** | MongoDB Atlas, Mongoose `User` model, HTTP-only JWT cookies, 26 auth tests. |
-| **M3** | Project & File Management APIs | **Completed** | Recursive `FileNode` Mongoose schema, IDOR-protected project CRUD, `/api/projects/:id/files` endpoints, full `projectApiService` client integration, 37 Vitest tests (63 total). |
-| **M4** | Code Execution Pipeline | **Planned** | OnlineCompiler.io backend proxy (`POST /api/execute`), language allowlisting, server-side secret management, rate limiting. |
+| **M3** | Project & File Management APIs | **Completed** | Recursive `FileNode` Mongoose schema, IDOR-protected project CRUD, `/api/projects/:id/files` endpoints, full `projectApiService` client integration, 37 Vitest tests. |
+| **M4** | Code Execution Pipeline | **Completed** | OnlineCompiler.io backend proxy (`POST /api/execute`), language allowlisting, server-side secret management, per-user rate limiting, Run button wired with loading spinner, 26 Vitest tests (89 total). |
 | **M5** | Execution Console & Telemetry | **Planned** | Real-time stdout/stderr streaming, execution duration, peak memory usage, exit code display. |
 | **M8** | Live Collaboration | **Planned** | Multi-file shared workspaces via Yjs and WebSockets; room auth, presence, reconnection handling, starting with single-file sync. |
 | **M6** | Testing & Security | **Planned** | Monorepo-wide test suites, frontend unit/integration testing, end-to-end security audits. |
@@ -136,6 +136,8 @@ NODE_ENV=development
 CLIENT_ORIGIN=http://localhost:5173
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/devnest?retryWrites=true&w=majority
 JWT_SECRET=your_jwt_secret_key_minimum_32_characters_long
+ONLINECOMPILER_API_KEY=your_onlinecompiler_api_key_here
+ONLINECOMPILER_BASE_URL=https://api.onlinecompiler.io
 ```
 
 > **Security Warning:** Never commit `.env` files or hardcode secrets into the repository. The root `.gitignore` excludes all `.env` files.

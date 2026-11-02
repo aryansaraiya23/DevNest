@@ -14,6 +14,7 @@ export interface ExecutionRequest {
   language: SupportedLanguage;
   sourceCode: string;
   stdin?: string;
+  projectId?: string;
 }
 
 export interface ExecutionTelemetry {
